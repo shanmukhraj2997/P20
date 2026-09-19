@@ -14,8 +14,7 @@ export default function Sidebar() {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
     { name: 'Resource Catalogue (M1)', href: '/resources', badge: 'Active', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
-    { name: 'Availability & Rules (M2)', href: '#', badge: 'Sprint 2', roles: ['faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
-    { name: 'Booking Engine (M3)', href: '#', badge: 'Sprint 3', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
+    { name: 'My Bookings & Calendar (M3)', href: '/my-bookings', badge: 'Active', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
     { name: 'Timetable Integration (M4)', href: '#', badge: 'Sprint 4', roles: ['student', 'faculty', 'dept_head', 'admin'] },
     { name: 'Approval Workflows (M5)', href: '#', badge: 'Sprint 5', roles: ['custodian', 'dept_head', 'facility_mgr', 'admin'] },
     { name: 'Check-in & Auto-Release (M6)', href: '#', badge: 'Sprint 6', roles: ['custodian', 'facility_mgr', 'admin'] },
@@ -38,7 +37,7 @@ export default function Sidebar() {
               key={item.name}
               href={item.href}
               className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                item.href === '/resources' || item.href === '/dashboard'
+                item.href !== '#'
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
