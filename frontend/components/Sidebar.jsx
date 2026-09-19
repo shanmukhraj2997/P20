@@ -13,7 +13,7 @@ export default function Sidebar() {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
-    { name: 'Resource Catalogue (M1)', href: '#', badge: 'Sprint 2', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
+    { name: 'Resource Catalogue (M1)', href: '/resources', badge: 'Active', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
     { name: 'Availability & Rules (M2)', href: '#', badge: 'Sprint 2', roles: ['faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
     { name: 'Booking Engine (M3)', href: '#', badge: 'Sprint 3', roles: ['student', 'faculty', 'custodian', 'dept_head', 'facility_mgr', 'admin'] },
     { name: 'Timetable Integration (M4)', href: '#', badge: 'Sprint 4', roles: ['student', 'faculty', 'dept_head', 'admin'] },
@@ -38,7 +38,7 @@ export default function Sidebar() {
               key={item.name}
               href={item.href}
               className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                item.href === '/dashboard'
+                item.href === '/resources' || item.href === '/dashboard'
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
