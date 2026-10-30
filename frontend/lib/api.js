@@ -81,5 +81,8 @@ export const api = {
     get: (id) => apiRequest(`/bookings/${id}/`),
     cancel: (id) => apiRequest(`/bookings/${id}/cancel/`, { method: 'POST' }),
     manage: () => apiRequest('/bookings/manage/'),
+    getQr: (id) => apiRequest(`/bookings/${id}/qr/`),
+    checkIn: (id, payload = {}) => apiRequest(`/bookings/${id}/check-in/`, { method: 'POST', body: JSON.stringify(payload) }),
+    checkInWithToken: (payload) => apiRequest('/bookings/check-in/', { method: 'POST', body: JSON.stringify(payload) }),
   },
 };

@@ -78,7 +78,12 @@ class DashboardStatsView(APIView):
         # Count active upcoming bookings for this user using database filtering
         upcoming_count = Booking.objects.filter(
             requester=request.user,
-            status__in=[Booking.STATUS_APPROVED, Booking.STATUS_PENDING],
+            status__in=[
+                Booking.STATUS_APPROVED,
+                Booking.STATUS_CONFIRMED,
+                Booking.STATUS_CHECKED_IN,
+                Booking.STATUS_PENDING,
+            ],
             slots__is_active=True,
             slots__period__endswith__gte=now
         ).distinct().count()

@@ -10,6 +10,8 @@ import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import ConfirmModal from '@/components/ConfirmModal';
+import QrCheckInModal from '@/components/QrCheckInModal';
+import QrScanModal from '@/components/QrScanModal';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 
@@ -25,6 +27,10 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionMsg, setActionMsg] = useState(null);
+
+  // QR Modal States
+  const [qrModalBooking, setQrModalBooking] = useState(null);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // Cancellation Modal State
   const [cancellingBooking, setCancellingBooking] = useState(null);
@@ -223,10 +229,25 @@ export default function MyBookingsPage() {
                 >
                   <option value="all">All Statuses</option>
                   <option value="approved">Approved</option>
+                  <option value="checked_in">Checked In</option>
                   <option value="pending">Pending</option>
+                  <option value="no_show">No Show</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
               </div>
+
+              {isStaffRole && (
+                <button
+                  onClick={() => setShowScanModal(true)}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                  id="staff-scan-button"
+                >
+                  <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  </svg>
+                  <span>Desk Check-In</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -297,7 +318,25 @@ export default function MyBookingsPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-3 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                      {/* QR Check-In Action Button */}
+                      {!isCancelled && b.status !== 'rejected' && b.status !== 'no_show' && (
+                        <button
+                          onClick={() => setQrModalBooking(b)}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 border shadow-2xs ${
+                            b.status === 'checked_in'
+                              ? 'bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100'
+                              : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'
+                          }`}
+                          id={`qr-checkin-${b.id}`}
+                        >
+                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                          </svg>
+                          <span>{b.status === 'checked_in' ? 'Pass Checked-In' : 'Access QR & Check-In'}</span>
+                        </button>
+                      )}
+
                       <Link
                         href={`/resources/${b.resource}/availability`}
                         className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all"
@@ -305,7 +344,7 @@ export default function MyBookingsPage() {
                         Calendar
                       </Link>
 
-                      {!isCancelled && (
+                      {!isCancelled && b.status !== 'checked_in' && b.status !== 'completed' && b.status !== 'no_show' && b.status !== 'rejected' && (
                         <button
                           onClick={() => setCancellingBooking(b)}
                           className="px-3.5 py-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-transparent text-xs font-bold rounded-xl transition-all"
@@ -320,6 +359,30 @@ export default function MyBookingsPage() {
               })}
             </div>
           )}
+
+          {/* QR Check-In Modal */}
+          <QrCheckInModal
+            isOpen={Boolean(qrModalBooking)}
+            booking={qrModalBooking}
+            isStaff={isStaffRole}
+            onClose={() => setQrModalBooking(null)}
+            onCheckedIn={(updated) => {
+              setActionMsg(`Booking #${updated.id} checked in successfully!`);
+              fetchBookings();
+              setTimeout(() => setActionMsg(null), 3500);
+            }}
+          />
+
+          {/* Staff Kiosk / Scanner Modal */}
+          <QrScanModal
+            isOpen={showScanModal}
+            onClose={() => setShowScanModal(false)}
+            onCheckedIn={(updated) => {
+              setActionMsg(`Check-in verified for Booking #${updated.id}!`);
+              fetchBookings();
+              setTimeout(() => setActionMsg(null), 3500);
+            }}
+          />
 
           {/* Cancellation Confirmation Modal */}
           <ConfirmModal
