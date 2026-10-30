@@ -99,6 +99,19 @@ class AuthenticationAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 6)
 
+    def test_dashboard_stats_endpoint(self):
+        user = User.objects.create_user(username="stats_user", password="Password123!", role="student")
+        token = Token.objects.create(user=user)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+
+        url = reverse('dashboard-stats')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("total_resources", response.data)
+        self.assertIn("available_resources", response.data)
+        self.assertIn("my_bookings", response.data)
+        self.assertIn("upcoming_bookings", response.data)
+
 class PermissionClassTests(TestCase):
     def test_role_permission_classes(self):
         perm_map = [

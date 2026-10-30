@@ -6,7 +6,7 @@ from resources.models import ResourceType, Resource
 from resources.serializers import (
     ResourceTypeSerializer, ResourceListSerializer, ResourceDetailSerializer
 )
-from resources.permissions import IsCustodianOrAdminForResource
+from resources.permissions import IsCustodianOrAdminForResource, CanCreateResource
 
 class ResourceTypeListView(generics.ListCreateAPIView):
     queryset = ResourceType.objects.all()
@@ -15,7 +15,17 @@ class ResourceTypeListView(generics.ListCreateAPIView):
 
 class ResourceListCreateView(generics.ListCreateAPIView):
     queryset = Resource.objects.all().select_related('resource_type', 'custodian')
-    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [CanCreateResource()]
+        return [AllowAny()]
+
+    def perform_create(self, serializer):
+        if not serializer.validated_data.get('custodian') and self.request.user.is_authenticated:
+            serializer.save(custodian=self.request.user)
+        else:
+            serializer.save()
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

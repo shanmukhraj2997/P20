@@ -9,6 +9,7 @@ import StatusBadge from '@/components/StatusBadge';
 import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
+import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 
@@ -20,9 +21,14 @@ export default function MyBookingsPage() {
   const [manageBookings, setManageBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('my'); // 'my' or 'staff'
   const [statusFilter, setStatusFilter] = useState('all');
+  const [timelineFilter, setTimelineFilter] = useState('all'); // 'all', 'upcoming', 'past'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionMsg, setActionMsg] = useState(null);
+
+  // Cancellation Modal State
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [cancellingLoading, setCancellingLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -30,7 +36,7 @@ export default function MyBookingsPage() {
     }
   }, [user, authLoading, router]);
 
-  const isStaffRole = user && ['custodian', 'dept_head', 'facility_mgr', 'admin'].includes(user.role);
+  const isStaffRole = user && (['custodian', 'dept_head', 'facility_mgr', 'admin'].includes(user.role) || user.is_superuser);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -56,26 +62,37 @@ export default function MyBookingsPage() {
     }
   }, [user, fetchBookings]);
 
-  const handleCancelBooking = async (bookingId) => {
-    if (!confirm('Are you sure you want to cancel this booking? The time slot will be released.')) {
-      return;
-    }
-
+  const confirmCancel = async () => {
+    if (!cancellingBooking) return;
+    setCancellingLoading(true);
     try {
-      await api.bookings.cancel(bookingId);
-      setActionMsg(`Booking #${bookingId} successfully cancelled. Slot released.`);
+      await api.bookings.cancel(cancellingBooking.id);
+      setActionMsg(`Booking #${cancellingBooking.id} successfully cancelled. PostgreSQL time slot released.`);
+      setCancellingBooking(null);
       fetchBookings();
       setTimeout(() => setActionMsg(null), 4000);
     } catch (err) {
       alert(err.message || 'Failed to cancel booking.');
+    } finally {
+      setCancellingLoading(false);
     }
   };
 
   const currentList = activeTab === 'staff' ? manageBookings : bookings;
 
   const filteredBookings = currentList.filter((b) => {
-    if (statusFilter === 'all') return true;
-    return b.status === statusFilter;
+    if (statusFilter !== 'all' && b.status !== statusFilter) {
+      return false;
+    }
+    if (timelineFilter === 'upcoming') {
+      if (!b.end_time) return false;
+      return new Date(b.end_time) >= new Date() && b.status !== 'cancelled';
+    }
+    if (timelineFilter === 'past') {
+      if (!b.end_time) return true;
+      return new Date(b.end_time) < new Date() || b.status === 'cancelled';
+    }
+    return true;
   });
 
   const formatDateRange = (startStr, endStr) => {
@@ -135,9 +152,9 @@ export default function MyBookingsPage() {
           )}
 
           {/* Navigation Tabs & Filter Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200">
             {/* View Switcher Tabs (My Bookings vs Staff Management) */}
-            <div className="flex space-x-2 border-b sm:border-b-0 border-slate-100 pb-2 sm:pb-0">
+            <div className="flex flex-wrap items-center gap-2 border-b md:border-b-0 border-slate-100 pb-2 md:pb-0">
               <button
                 onClick={() => setActiveTab('my')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -165,20 +182,51 @@ export default function MyBookingsPage() {
               )}
             </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center space-x-2 text-xs">
-              <span className="text-slate-500 font-medium">Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                id="booking-status-filter"
-              >
-                <option value="all">All Statuses</option>
-                <option value="approved">Approved</option>
-                <option value="pending">Pending</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+            {/* Timeline & Status Filters */}
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              {/* Timeline segment */}
+              <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setTimelineFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    timelineFilter === 'all' ? 'bg-white font-bold text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setTimelineFilter('upcoming')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    timelineFilter === 'upcoming' ? 'bg-white font-bold text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Upcoming
+                </button>
+                <button
+                  onClick={() => setTimelineFilter('past')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    timelineFilter === 'past' ? 'bg-white font-bold text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Past
+                </button>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center space-x-1.5">
+                <span className="text-slate-500 font-medium text-[11px]">Status:</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  id="booking-status-filter"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -259,7 +307,7 @@ export default function MyBookingsPage() {
 
                       {!isCancelled && (
                         <button
-                          onClick={() => handleCancelBooking(b.id)}
+                          onClick={() => setCancellingBooking(b)}
                           className="px-3.5 py-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-transparent text-xs font-bold rounded-xl transition-all"
                           id={`cancel-booking-${b.id}`}
                         >
@@ -272,6 +320,23 @@ export default function MyBookingsPage() {
               })}
             </div>
           )}
+
+          {/* Cancellation Confirmation Modal */}
+          <ConfirmModal
+            isOpen={Boolean(cancellingBooking)}
+            title="Cancel Campus Reservation?"
+            message={
+              cancellingBooking
+                ? `Are you sure you want to cancel Booking #${cancellingBooking.id} for "${cancellingBooking.resource_name}"? The time slot will immediately be released on PostgreSQL for other users.`
+                : ''
+            }
+            confirmText="Yes, Release Slot"
+            cancelText="Keep Booking"
+            danger={true}
+            loading={cancellingLoading}
+            onConfirm={confirmCancel}
+            onCancel={() => setCancellingBooking(null)}
+          />
         </main>
       </div>
     </div>

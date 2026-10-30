@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import StatusBadge from '@/components/StatusBadge';
+import ResourceFormModal from '@/components/ResourceFormModal';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 
@@ -15,9 +16,12 @@ export default function ResourceDetailsPage({ params }) {
   const router = useRouter();
 
   const [resource, setResource] = useState(null);
+  const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAvailabilityNotice, setShowAvailabilityNotice] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -26,6 +30,10 @@ export default function ResourceDetailsPage({ params }) {
   }, [user, authLoading, router]);
 
   useEffect(() => {
+    api.resourceTypes().then(setTypes).catch(() => {});
+  }, []);
+
+  const loadResource = () => {
     if (user && id) {
       setLoading(true);
       api.resources.get(id)
@@ -38,7 +46,32 @@ export default function ResourceDetailsPage({ params }) {
           setLoading(false);
         });
     }
+  };
+
+  useEffect(() => {
+    loadResource();
   }, [user, id]);
+
+  const handleStatusChange = async (newStatus) => {
+    setUpdatingStatus(true);
+    try {
+      const updated = await api.resources.update(id, { status: newStatus });
+      setResource(updated);
+      setToastMsg(`Status updated to "${updated.status_display}".`);
+      setTimeout(() => setToastMsg(null), 3000);
+    } catch (err) {
+      alert(err.message || 'Failed to update status.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const isCustodianOrAdmin = user && (
+    user.role === 'admin' ||
+    user.role === 'facility_mgr' ||
+    user.is_superuser ||
+    (resource && (resource.custodian === user.id || resource.custodian_name === user.username))
+  );
 
   const fallbackImage = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80';
 
@@ -71,6 +104,18 @@ export default function ResourceDetailsPage({ params }) {
 
             <span className="text-xs text-slate-400 font-mono">Resource ID: #{id}</span>
           </div>
+
+          {toastMsg && (
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-semibold shadow-2xs flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{toastMsg}</span>
+              </div>
+              <button onClick={() => setToastMsg(null)} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold">Dismiss</button>
+            </div>
+          )}
 
           {loading ? (
             <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center animate-pulse">
@@ -125,40 +170,57 @@ export default function ResourceDetailsPage({ params }) {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setShowAvailabilityNotice(!showAvailabilityNotice)}
-                      className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center space-x-2 border border-indigo-400/30"
-                      id="view-availability-btn"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span>View Availability</span>
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      {isCustodianOrAdmin && (
+                        <button
+                          onClick={() => setShowEditModal(true)}
+                          className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl backdrop-blur-md border border-white/20 transition-all flex items-center space-x-1.5"
+                          id="edit-resource-btn"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          <span>Edit Details</span>
+                        </button>
+                      )}
+
+                      <Link
+                        href={`/resources/${id}/availability`}
+                        className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center space-x-2 border border-indigo-400/30"
+                        id="view-availability-btn"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>Check Availability & Book &rarr;</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Sprint 3 Preview Availability Alert */}
-              {showAvailabilityNotice && (
-                <div className="bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-purple-500/10 border-2 border-indigo-500/40 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-start space-x-3">
-                    <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-xs">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">Sprint 3 Conflict-Safe Booking Engine Preview</h4>
-                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                        Resource <strong>{resource.name}</strong> is catalogued and active. The database-level range exclusion booking engine (`EXCLUDE USING gist`) and real-time FullCalendar availability schedule will be enabled in <strong>Sprint 3</strong>.
-                      </p>
-                      <div className="mt-3 flex items-center space-x-3 text-[11px] font-mono text-indigo-700">
-                        <span className="bg-indigo-100 px-2 py-0.5 rounded font-semibold">PostgreSQL btree_gist Ready</span>
-                        <span>•</span>
-                        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold">Status: {resource.status_display}</span>
-                      </div>
-                    </div>
+              {/* Custodian Management Bar */}
+              {isCustodianOrAdmin && (
+                <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <span className="text-xs font-bold text-amber-900">Custodian Management Console:</span>
+                    <span className="text-xs text-amber-700">Quickly toggle operational status for this campus facility</span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-semibold text-slate-600">Status:</span>
+                    <select
+                      value={resource.status}
+                      disabled={updatingStatus}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      className="px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                      id="custodian-status-select"
+                    >
+                      <option value="available">Available</option>
+                      <option value="maintenance">Under Maintenance</option>
+                      <option value="reserved">Reserved</option>
+                    </select>
                   </div>
                 </div>
               )}
@@ -265,6 +327,19 @@ export default function ResourceDetailsPage({ params }) {
                   </div>
                 </div>
               </div>
+
+              {/* Custodian Edit Modal */}
+              <ResourceFormModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                resource={resource}
+                types={types}
+                onSuccess={(updated) => {
+                  setResource(updated);
+                  setToastMsg(`Resource "${updated.name}" updated successfully!`);
+                  setTimeout(() => setToastMsg(null), 3000);
+                }}
+              />
             </div>
           )}
         </main>
@@ -272,3 +347,4 @@ export default function ResourceDetailsPage({ params }) {
     </div>
   );
 }
+

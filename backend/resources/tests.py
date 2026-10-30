@@ -148,3 +148,38 @@ class ResourceAPITests(TestCase):
         response = self.client.put(url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["name"], "Admin Updated Hall")
+
+    def test_student_cannot_create_resource(self):
+        url = reverse('resource-list')
+        token = Token.objects.get_or_create(user=self.student)[0]
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+
+        payload = {
+            'name': 'Unauthorized Lab',
+            'resource_type': self.res_type_1.id,
+            'description': 'Created by student',
+            'capacity': 25,
+            'location': 'Secret Room',
+            'status': 'available'
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_custodian_can_create_resource(self):
+        url = reverse('resource-list')
+        token = Token.objects.get_or_create(user=self.custodian)[0]
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+
+        payload = {
+            'name': 'Authorized Lab',
+            'resource_type': self.res_type_1.id,
+            'description': 'Created by custodian',
+            'capacity': 40,
+            'location': 'Block 5 Room 12',
+            'status': 'available'
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "Authorized Lab")
+        self.assertEqual(response.data["custodian_name"], self.custodian.username)
+

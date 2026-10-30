@@ -15,8 +15,10 @@ else:
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-p20-campus-booking-platform-secret-key-sprint1')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-allowed_hosts_raw = config('ALLOWED_HOSTS', default='localhost,127.0.0.1')
+allowed_hosts_raw = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver')
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 INSTALLED_APPS = [
     'django.contrib.admin',

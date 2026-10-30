@@ -103,8 +103,23 @@ export default function AvailabilityBookingPage({ params }) {
       return;
     }
 
-    const startIso = `${bookingDate}T${startTime}:00Z`;
-    const endIso = `${bookingDate}T${endTime}:00Z`;
+    const startDateObj = new Date(`${bookingDate}T${startTime}:00`);
+    const endDateObj = new Date(`${bookingDate}T${endTime}:00`);
+
+    if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+      setBookingError('Invalid date or time format provided.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (startDateObj >= endDateObj) {
+      setBookingError('End time must be strictly after start time.');
+      setSubmitting(false);
+      return;
+    }
+
+    const startIso = startDateObj.toISOString();
+    const endIso = endDateObj.toISOString();
 
     try {
       const result = await api.bookings.create({
@@ -121,13 +136,14 @@ export default function AvailabilityBookingPage({ params }) {
       }, 1500);
     } catch (err) {
       if (err.status === 409 || err.errorCode === 'booking_conflict') {
-        setBookingError('The selected time slot is no longer available. Please choose another slot.');
+        setBookingError('DATABASE CONFLICT (HTTP 409): The requested time slot is already reserved for this resource. PostgreSQL btree_gist exclusion constraint prevented overlapping reservations. Please select an available slot.');
       } else {
         setBookingError(err.message || 'Booking creation failed. Please verify selected times.');
       }
     } finally {
       setSubmitting(false);
     }
+
   };
 
   if (authLoading || (!user && loading)) {
@@ -181,19 +197,22 @@ export default function AvailabilityBookingPage({ params }) {
 
           {/* Alert Banners */}
           {bookingError && (
-            <div className="p-4 rounded-xl bg-red-50 border-2 border-red-300 text-red-800 text-xs font-semibold flex items-center justify-between shadow-sm animate-bounce">
-              <div className="flex items-center space-x-2">
-                <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-4 rounded-xl bg-red-50 border-2 border-red-300 text-red-900 text-xs font-semibold flex items-start justify-between shadow-xs">
+              <div className="flex items-start space-x-3">
+                <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span>{bookingError}</span>
+                <div className="space-y-0.5">
+                  <div className="font-bold text-red-800">Booking Conflict Prevented</div>
+                  <div className="text-red-700 leading-relaxed">{bookingError}</div>
+                </div>
               </div>
-              <button onClick={() => setBookingError(null)} className="text-red-500 hover:text-red-700 text-xs font-bold">Dismiss</button>
+              <button onClick={() => setBookingError(null)} className="text-red-600 hover:text-red-800 text-xs font-bold shrink-0 ml-4">Dismiss</button>
             </div>
           )}
 
           {successMessage && (
-            <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-emerald-800 text-xs font-semibold flex items-center space-x-2 shadow-sm">
+            <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-emerald-900 text-xs font-semibold flex items-center space-x-3 shadow-xs">
               <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
@@ -205,14 +224,37 @@ export default function AvailabilityBookingPage({ params }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* FullCalendar Schedule View */}
             <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                  Resource Availability Calendar
-                </h3>
-                <span className="text-[11px] text-slate-500">Drag/Click to select booking time slot</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-100 gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                    Resource Availability Calendar
+                  </h3>
+                  <span className="text-[11px] text-slate-500">Drag or click any empty slot to select a booking time</span>
+                </div>
+
+                {/* Calendar Color Legend */}
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                  <div className="flex items-center space-x-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
+                    <span>My Booking</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block"></span>
+                    <span>Reserved</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+                    <span>Blackout</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                    <span>Available</span>
+                  </div>
+                </div>
               </div>
 
               <div className="fullcalendar-wrapper text-xs">
+
                 <FullCalendar
                   ref={calendarRef}
                   plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -286,6 +328,27 @@ export default function AvailabilityBookingPage({ params }) {
                       id="booking-end-input"
                     />
                   </div>
+                </div>
+
+                {/* Duration Presets */}
+                <div className="flex items-center space-x-2 pt-1">
+                  <span className="text-[11px] text-slate-500">Quick Duration:</span>
+                  {[1, 2, 3].map((hours) => (
+                    <button
+                      key={hours}
+                      type="button"
+                      onClick={() => {
+                        if (startTime) {
+                          const [h, m] = startTime.split(':').map(Number);
+                          const endH = Math.min(21, h + hours);
+                          setEndTime(`${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+                        }
+                      }}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 rounded text-[11px] font-semibold border border-slate-200 transition-colors"
+                    >
+                      +{hours}h
+                    </button>
+                  ))}
                 </div>
 
                 <div>
