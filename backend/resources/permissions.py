@@ -2,8 +2,8 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 class CanCreateResource(BasePermission):
     """
-    Permission allowing only Administrators, Facility Managers, Resource Custodians,
-    or Superusers to create new campus resources.
+    Permission allowing only Administrators, Facility Managers, or Superusers
+    to create new campus resources and resource types.
     """
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
@@ -13,7 +13,6 @@ class CanCreateResource(BasePermission):
         return bool(
             request.user.is_admin_role
             or request.user.is_facility_mgr_role
-            or request.user.is_custodian_role
             or request.user.is_superuser
         )
 

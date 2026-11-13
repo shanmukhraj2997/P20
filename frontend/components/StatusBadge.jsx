@@ -8,24 +8,24 @@ export default function StatusBadge({ status, display }) {
       case 'available':
       case 'approved':
       case 'confirmed':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold';
+        return 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold';
       case 'checked_in':
-        return 'bg-teal-50 text-teal-800 border-teal-300 font-bold';
+        return 'bg-emerald-100 text-emerald-900 border-emerald-400 font-bold';
       case 'completed':
-        return 'bg-blue-50 text-blue-700 border-blue-200 font-semibold';
+        return 'bg-[#F5F5F5] text-[#111111] border-[#E5E5E5] font-semibold';
       case 'maintenance':
       case 'no_show':
-        return 'bg-amber-50 text-amber-800 border-amber-300 font-semibold';
+        return 'bg-amber-100/80 text-amber-950 border-amber-300 font-semibold';
       case 'reserved':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold';
+        return 'bg-neutral-100 text-[#111111] border-[#E5E5E5] font-semibold';
       case 'pending':
-        return 'bg-sky-50 text-sky-700 border-sky-200 font-semibold';
+        return 'bg-amber-50 text-amber-900 border border-amber-300 font-semibold';
       case 'cancelled':
       case 'rejected':
       case 'decommissioned':
-        return 'bg-rose-50 text-rose-700 border-rose-200 font-semibold';
+        return 'bg-rose-50 text-rose-800 border-rose-300 font-semibold';
       default:
-        return 'bg-slate-100 text-slate-700 border-slate-200';
+        return 'bg-[#F5F5F5] text-[#6B6B6B] border-[#E5E5E5] font-medium';
     }
   };
 
@@ -34,24 +34,24 @@ export default function StatusBadge({ status, display }) {
       case 'available':
       case 'approved':
       case 'confirmed':
-        return 'bg-emerald-500';
+        return 'bg-emerald-600';
       case 'checked_in':
-        return 'bg-teal-500 animate-pulse';
+        return 'bg-emerald-600 animate-pulse';
       case 'completed':
-        return 'bg-blue-500';
+        return 'bg-[#6B6B6B]';
       case 'maintenance':
       case 'no_show':
-        return 'bg-amber-500';
+        return 'bg-amber-600';
       case 'reserved':
-        return 'bg-indigo-500';
+        return 'bg-[#111111]';
       case 'pending':
-        return 'bg-sky-500';
+        return 'bg-amber-500';
       case 'cancelled':
       case 'rejected':
       case 'decommissioned':
-        return 'bg-rose-500';
+        return 'bg-rose-600';
       default:
-        return 'bg-slate-400';
+        return 'bg-[#6B6B6B]';
     }
   };
 

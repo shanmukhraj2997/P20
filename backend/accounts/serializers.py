@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from accounts.models import User
+from accounts.models import User, Notification
 
 class UserSerializer(serializers.ModelSerializer):
     role_display = serializers.CharField(source='get_role_display', read_only=True)
@@ -19,14 +19,26 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'first_name', 'last_name', 'role', 'department', 'phone_number']
+        fields = ['username', 'email', 'password', 'first_name', 'last_name', 'department', 'phone_number']
 
     def create(self, validated_data):
         password = validated_data.pop('password')
+        validated_data['role'] = User.ROLE_STUDENT
         user = User(**validated_data)
         user.set_password(password)
         user.save()
         return user
+
+class UserRoleUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['role']
+
+    def validate_role(self, value):
+        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+        if value not in valid_roles:
+            raise serializers.ValidationError(f"Invalid role '{value}'. Must be one of: {valid_roles}")
+        return value
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -47,3 +59,14 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": "Must include both username and password."})
 
         return data
+
+class NotificationSerializer(serializers.ModelSerializer):
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'user', 'type', 'type_display', 'title', 'message', 'read', 'created_at'
+        ]
+        read_only_fields = ['id', 'user', 'type', 'type_display', 'created_at']
+

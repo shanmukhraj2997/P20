@@ -1,5 +1,6 @@
 from django.db import models
 from resources.models import Resource
+from accounts.models import User
 
 class AvailabilityRule(models.Model):
     DAY_CHOICES = [
@@ -36,6 +37,16 @@ class AvailabilityRule(models.Model):
         return f"{res_name} — {day_name} ({self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')})"
 
 class Blackout(models.Model):
+    KIND_MAINTENANCE = 'maintenance'
+    KIND_DOWNTIME = 'downtime'
+    KIND_HOLIDAY = 'holiday'
+
+    KIND_CHOICES = [
+        (KIND_MAINTENANCE, 'Maintenance'),
+        (KIND_DOWNTIME, 'Downtime'),
+        (KIND_HOLIDAY, 'Campus Holiday'),
+    ]
+
     resource = models.ForeignKey(
         Resource,
         on_delete=models.CASCADE,
@@ -47,6 +58,27 @@ class Blackout(models.Model):
     start_datetime = models.DateTimeField(help_text="Start date & time of blackout.")
     end_datetime = models.DateTimeField(help_text="End date & time of blackout.")
     reason = models.CharField(max_length=255, help_text="Reason for blackout (e.g., Maintenance, University Holiday).")
+    kind = models.CharField(
+        max_length=20,
+        choices=KIND_CHOICES,
+        default=KIND_MAINTENANCE,
+        help_text="Classification of downtime: maintenance, downtime, or holiday."
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_blackouts',
+        help_text="Staff member or custodian who scheduled this blackout/maintenance."
+    )
+    notes = models.TextField(
+        blank=True,
+        default='',
+        help_text="Operational notes or instructions regarding this downtime."
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         ordering = ['-start_datetime']
@@ -55,4 +87,7 @@ class Blackout(models.Model):
 
     def __str__(self):
         res_name = self.resource.name if self.resource else "Campus-Wide"
-        return f"Blackout [{res_name}]: {self.reason} ({self.start_datetime.strftime('%Y-%m-%d %H:%M')} to {self.end_datetime.strftime('%Y-%m-%d %H:%M')})"
+        return f"[{self.get_kind_display()}] {res_name}: {self.reason} ({self.start_datetime.strftime('%Y-%m-%d %H:%M')} to {self.end_datetime.strftime('%Y-%m-%d %H:%M')})"
+
+# Model alias for semantic convenience
+MaintenanceWindow = Blackout

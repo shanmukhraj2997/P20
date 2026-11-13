@@ -85,43 +85,43 @@ export default function ResourceCataloguePage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 text-sm">
+      <div className="min-h-screen bg-[#111111] flex items-center justify-center text-[#6B6B6B] text-sm">
         Authenticating session...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
       <Header />
       <div className="flex flex-1">
         <Sidebar />
 
         <main className="flex-1 p-8 space-y-6">
           {/* Page Banner */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white p-6 rounded-2xl border border-[#E5E5E5] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center space-x-2 text-xs text-indigo-600 font-bold uppercase tracking-wider mb-1">
+              <div className="flex items-center space-x-2 text-xs text-[#F58220] font-bold uppercase tracking-wider mb-1">
                 <span>Module M1</span>
                 <span>•</span>
                 <span>Campus Infrastructure & Facilities</span>
               </div>
-              <h2 className="text-2xl font-bold text-slate-900">Resource Catalogue</h2>
-              <p className="text-xs text-slate-500 mt-1 max-w-xl">
+              <h2 className="text-2xl font-bold text-[#111111]">Resource Catalogue</h2>
+              <p className="text-xs text-[#6B6B6B] mt-1 max-w-xl">
                 Browse classrooms, laboratories, specialized research equipment, seminar halls, meeting rooms, and sports facilities.
               </p>
             </div>
 
             <div className="flex items-center space-x-3">
-              <div className="bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 text-right">
-                <div className="text-[11px] text-slate-500 font-medium">Matching Resources</div>
-                <div className="text-lg font-black text-indigo-600">{resources.length}</div>
+              <div className="bg-[#F5F5F5] px-4 py-2.5 rounded-xl border border-[#E5E5E5] text-right">
+                <div className="text-[11px] text-[#6B6B6B] font-medium">Matching Resources</div>
+                <div className="text-lg font-black text-[#F58220]">{resources.length}</div>
               </div>
 
               {isStaffRole && (
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center space-x-1.5 shrink-0"
+                  className="px-4 py-3 bg-[#F58220] hover:bg-[#D96A0B] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center space-x-1.5 shrink-0 focus:ring-2 focus:ring-[#F58220] cursor-pointer"
                   id="add-resource-modal-btn"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@ export default function ResourceCataloguePage() {
                 </svg>
                 <span>{toastMsg}</span>
               </div>
-              <button onClick={() => setToastMsg(null)} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold">Dismiss</button>
+              <button onClick={() => setToastMsg(null)} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold cursor-pointer">Dismiss</button>
             </div>
           )}
 
@@ -149,10 +149,10 @@ export default function ResourceCataloguePage() {
           <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">
             <button
               onClick={() => setSelectedType('')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
                 selectedType === ''
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-[#F58220] text-white border-[#F58220] shadow-xs'
+                  : 'bg-white text-[#111111] border-[#E5E5E5] hover:bg-[#F5F5F5]'
               }`}
             >
               All Categories
@@ -161,10 +161,10 @@ export default function ResourceCataloguePage() {
               <button
                 key={t.id}
                 onClick={() => setSelectedType(String(t.id))}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
                   String(selectedType) === String(t.id)
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    ? 'bg-[#F58220] text-white border-[#F58220] shadow-xs'
+                    : 'bg-white text-[#111111] border-[#E5E5E5] hover:bg-[#F5F5F5]'
                 }`}
               >
                 {t.name}

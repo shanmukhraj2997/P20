@@ -99,20 +99,20 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#111111]/70 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-[#E5E5E5] overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-6 text-white flex items-center justify-between">
+        <div className="bg-[#111111] border-b border-[#222222] p-6 text-white flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-indigo-300">Campus Access Pass</span>
-              <span className="text-xs bg-indigo-800/80 px-2 py-0.5 rounded-full font-mono">#{booking.id}</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-[#F58220]">Campus Access Pass</span>
+              <span className="text-xs bg-[#F58220]/20 text-[#F58220] border border-[#F58220]/40 px-2 py-0.5 rounded-full font-mono">#{booking.id}</span>
             </div>
             <h2 className="text-lg font-bold mt-1 text-white">{booking.resource_name}</h2>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-all"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer"
             aria-label="Close modal"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,35 +124,35 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
         {/* Modal Body */}
         <div className="p-6 space-y-5">
           {/* Booking Summary Card */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
+          <div className="bg-[#F5F5F5] border border-[#E5E5E5] rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-slate-500 font-medium">Location</div>
-              <div className="text-xs font-semibold text-slate-800">{booking.resource_location || 'Campus Facility'}</div>
+              <div className="text-xs text-[#6B6B6B] font-medium">Location</div>
+              <div className="text-xs font-semibold text-[#111111]">{booking.resource_location || 'Campus Facility'}</div>
             </div>
             <div className="flex items-center justify-between">
-              <div className="text-xs text-slate-500 font-medium">Scheduled Time</div>
-              <div className="text-xs font-semibold text-slate-800">
+              <div className="text-xs text-[#6B6B6B] font-medium">Scheduled Time</div>
+              <div className="text-xs font-semibold text-[#111111]">
                 {formatSlotDate(booking.start_time)} • {formatSlotTime(booking.start_time)} – {formatSlotTime(booking.end_time)}
               </div>
             </div>
-            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
-              <div className="text-xs text-slate-500 font-medium">Check-In Status</div>
+            <div className="flex items-center justify-between pt-1 border-t border-[#E5E5E5]">
+              <div className="text-xs text-[#6B6B6B] font-medium">Check-In Status</div>
               <StatusBadge status={currentStatus} display={qrData?.status_display || booking.status_display} />
             </div>
           </div>
 
           {/* Error & Success Banners */}
           {errorMsg && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-start space-x-2">
+            <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs flex items-start space-x-2">
               <svg className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="font-medium leading-relaxed">{errorMsg}</div>
+              <div className="font-semibold leading-relaxed">{errorMsg}</div>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center space-x-2">
+            <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-800 text-xs flex items-center space-x-2">
               <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
@@ -161,10 +161,10 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
           )}
 
           {/* QR Code Presentation */}
-          <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+          <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-dashed border-[#E5E5E5]">
             {loadingQr ? (
-              <div className="w-52 h-52 flex flex-col items-center justify-center space-y-2 text-slate-400">
-                <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-52 h-52 flex flex-col items-center justify-center space-y-2 text-[#6B6B6B]">
+                <div className="w-8 h-8 border-3 border-[#F58220] border-t-transparent rounded-full animate-spin"></div>
                 <span className="text-xs">Generating secure QR code...</span>
               </div>
             ) : qrData?.qr_data_url ? (
@@ -175,7 +175,7 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
                   className="w-52 h-52 object-contain rounded-xl shadow-xs transition-transform group-hover:scale-102"
                 />
                 {isCheckedIn && (
-                  <div className="absolute inset-0 bg-emerald-950/40 backdrop-blur-2xs rounded-xl flex flex-col items-center justify-center text-white p-3 text-center">
+                  <div className="absolute inset-0 bg-[#111111]/70 backdrop-blur-2xs rounded-xl flex flex-col items-center justify-center text-white p-3 text-center">
                     <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg mb-2">
                       <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
@@ -183,25 +183,25 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
                     </div>
                     <span className="text-xs font-bold uppercase tracking-wider">Checked In</span>
                     {qrData.checked_in_at && (
-                      <span className="text-[10px] text-emerald-200 mt-0.5">{formatSlotTime(qrData.checked_in_at)}</span>
+                      <span className="text-[10px] text-emerald-300 mt-0.5">{formatSlotTime(qrData.checked_in_at)}</span>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="w-52 h-52 flex items-center justify-center text-slate-400 text-xs">
+              <div className="w-52 h-52 flex items-center justify-center text-[#6B6B6B] text-xs">
                 QR code unavailable
               </div>
             )}
 
             {/* Token Copy Section */}
             <div className="mt-3 flex items-center space-x-2 w-full justify-center">
-              <span className="text-[11px] text-slate-400 font-mono truncate max-w-[200px]">
+              <span className="text-[11px] text-[#6B6B6B] font-mono truncate max-w-[200px]">
                 {qrData?.checkin_token || booking.checkin_token || 'Token loading...'}
               </span>
               <button
                 onClick={copyToken}
-                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                className="text-[11px] font-semibold text-[#F58220] hover:text-[#D96A0B] transition-colors cursor-pointer"
                 title="Copy verification token"
               >
                 {copied ? 'Copied!' : 'Copy'}
@@ -210,9 +210,9 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
           </div>
 
           {/* Window Information Note */}
-          <div className="text-[11px] text-slate-500 text-center leading-relaxed">
+          <div className="text-[11px] text-[#6B6B6B] text-center leading-relaxed">
             {isCheckedIn ? (
-              <span className="text-emerald-700 font-medium">
+              <span className="text-emerald-700 font-semibold">
                 ✓ Check-in completed. Resource access is officially logged.
               </span>
             ) : (
@@ -227,7 +227,7 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-[#111111] text-xs font-semibold text-[#111111] hover:bg-[#F5F5F5] transition-all cursor-pointer"
             >
               Close
             </button>
@@ -235,9 +235,9 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
             {isCheckedIn ? (
               <button
                 disabled
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 text-xs font-semibold text-slate-400 cursor-not-allowed flex items-center justify-center space-x-1"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-[#F5F5F5] text-xs font-semibold text-[#6B6B6B] cursor-not-allowed flex items-center justify-center space-x-1"
               >
-                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
                 <span>Checked In</span>
@@ -245,10 +245,10 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
             ) : !canCheckIn ? (
               <button
                 disabled
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 text-xs font-semibold text-slate-400 cursor-not-allowed flex items-center justify-center space-x-1"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-[#F5F5F5] text-xs font-semibold text-[#6B6B6B] cursor-not-allowed flex items-center justify-center space-x-1"
                 title="Check-in window opens 15 minutes prior to scheduled start."
               >
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-[#6B6B6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>Window Closed</span>
@@ -258,9 +258,9 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
                 type="button"
                 onClick={() => handleCheckIn(false)}
                 disabled={submitting}
-                className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-all shadow-sm flex items-center justify-center space-x-1.5 ${
+                className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-all shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer ${
                   submitting
-                    ? 'bg-slate-400 cursor-not-allowed'
+                    ? 'bg-[#6B6B6B] cursor-not-allowed'
                     : 'bg-emerald-600 hover:bg-emerald-700 active:scale-98'
                 }`}
               >
@@ -285,4 +285,3 @@ export default function QrCheckInModal({ booking, isOpen, onClose, onCheckedIn, 
     </div>
   );
 }
-

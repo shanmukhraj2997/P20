@@ -41,7 +41,6 @@ class AuthenticationAPITests(TestCase):
             "username": "new_student",
             "password": "Password123!",
             "email": "student@campus.edu",
-            "role": "student",
             "department": "Computer Science"
         }
         response = self.client.post(self.register_url, payload, format='json')
@@ -49,6 +48,53 @@ class AuthenticationAPITests(TestCase):
         self.assertIn("token", response.data)
         self.assertEqual(response.data["user"]["username"], "new_student")
         self.assertEqual(response.data["user"]["role"], "student")
+
+    def test_registration_cannot_set_role(self):
+        # Even if a malicious client sends role='admin' or 'faculty', registration forces role='student'
+        payload = {
+            "username": "sneaky_admin_attempt",
+            "password": "Password123!",
+            "email": "sneaky@campus.edu",
+            "role": "admin",
+            "department": "IT"
+        }
+        response = self.client.post(self.register_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["user"]["role"], "student")
+
+        user = User.objects.get(username="sneaky_admin_attempt")
+        self.assertEqual(user.role, User.ROLE_STUDENT)
+
+    def test_admin_can_update_user_role(self):
+        admin = User.objects.create_user(username="admin_user", password="Password123!", role=User.ROLE_ADMIN)
+        admin_token = Token.objects.create(user=admin)
+        target = User.objects.create_user(username="target_user", password="Password123!", role=User.ROLE_STUDENT)
+
+        url = reverse('user-role-update', kwargs={'pk': target.id})
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + admin_token.key)
+        response = self.client.patch(url, {"role": "faculty"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        target.refresh_from_db()
+        self.assertEqual(target.role, User.ROLE_FACULTY)
+
+    def test_non_admin_cannot_update_user_role(self):
+        student = User.objects.create_user(username="regular_student", password="Password123!", role=User.ROLE_STUDENT)
+        student_token = Token.objects.create(user=student)
+        target = User.objects.create_user(username="another_user", password="Password123!", role=User.ROLE_STUDENT)
+
+        url = reverse('user-role-update', kwargs={'pk': target.id})
+
+        # Anonymous request rejected with 401
+        self.client.credentials()
+        res_anon = self.client.patch(url, {"role": "admin"}, format='json')
+        self.assertEqual(res_anon.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Student request rejected with 403
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + student_token.key)
+        res_forbidden = self.client.patch(url, {"role": "admin"}, format='json')
+        self.assertEqual(res_forbidden.status_code, status.HTTP_403_FORBIDDEN)
+        target.refresh_from_db()
+        self.assertEqual(target.role, User.ROLE_STUDENT)
 
     def test_user_login(self):
         user = User.objects.create_user(

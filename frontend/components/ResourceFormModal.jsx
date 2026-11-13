@@ -87,21 +87,21 @@ export default function ResourceFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-[#111111]/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-[#E5E5E5] shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="px-6 py-4 border-b border-[#E5E5E5] flex items-center justify-between bg-[#F5F5F5]">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[#F58220]">
               Campus Facilities & Equipment
             </div>
-            <h3 className="text-base font-bold text-slate-900">
+            <h3 className="text-base font-bold text-[#111111]">
               {isEditMode ? `Edit Resource: ${resource.name}` : 'Add New Campus Resource'}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            className="text-[#6B6B6B] hover:text-[#111111] p-1.5 rounded-lg hover:bg-white transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -112,32 +112,32 @@ export default function ResourceFormModal({
         {/* Modal Body / Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-medium">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-semibold">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Resource Name *</label>
+            <label className="block text-xs font-semibold text-[#111111] mb-1">Resource Name *</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Advanced Robotics & Automation Lab"
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
               id="resource-name-input"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Category / Type *</label>
+              <label className="block text-xs font-semibold text-[#111111] mb-1">Category / Type *</label>
               <select
                 required
                 value={resourceTypeId}
                 onChange={(e) => setResourceTypeId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
                 id="resource-type-input"
               >
                 <option value="">Select Category</option>
@@ -150,12 +150,12 @@ export default function ResourceFormModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Operational Status *</label>
+              <label className="block text-xs font-semibold text-[#111111] mb-1">Operational Status *</label>
               <select
                 required
                 value={statusVal}
                 onChange={(e) => setStatusVal(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
                 id="resource-status-input"
               >
                 <option value="available">Available</option>
@@ -167,20 +167,20 @@ export default function ResourceFormModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Physical Location *</label>
+              <label className="block text-xs font-semibold text-[#111111] mb-1">Physical Location *</label>
               <input
                 type="text"
                 required
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Block 38, Floor 2, Room 204"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
                 id="resource-location-input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Max Capacity (Seats) *</label>
+              <label className="block text-xs font-semibold text-[#111111] mb-1">Max Capacity (Seats) *</label>
               <input
                 type="number"
                 min="1"
@@ -188,27 +188,27 @@ export default function ResourceFormModal({
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
                 placeholder="e.g. 40"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
                 id="resource-capacity-input"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Detailed Description *</label>
+            <label className="block text-xs font-semibold text-[#111111] mb-1">Detailed Description *</label>
             <textarea
               required
               rows="3"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe specifications, specialized instruments, safety rules..."
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
               id="resource-description-input"
             ></textarea>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-[#111111] mb-1">
               Features & Equipment (Comma-separated)
             </label>
             <input
@@ -216,37 +216,37 @@ export default function ResourceFormModal({
               value={featuresStr}
               onChange={(e) => setFeaturesStr(e.target.value)}
               placeholder="e.g. Interactive Screen, Dual Laser Projector, Surround Audio, AC"
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
               id="resource-features-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Image URL (Optional)</label>
+            <label className="block text-xs font-semibold text-[#111111] mb-1">Image URL (Optional)</label>
             <input
               type="url"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://images.unsplash.com/..."
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-xs text-[#111111] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220]"
               id="resource-image-input"
             />
           </div>
 
           {/* Modal Actions */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+          <div className="pt-4 border-t border-[#E5E5E5] flex items-center justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F5F5F5] border border-[#111111] rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-50"
+              className="px-5 py-2.5 bg-[#F58220] hover:bg-[#D96A0B] text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-50 focus:ring-2 focus:ring-[#F58220] cursor-pointer"
               id="save-resource-submit-btn"
             >
               {submitting ? 'Saving Resource...' : isEditMode ? 'Update Resource' : 'Create Resource'}
@@ -257,4 +257,3 @@ export default function ResourceFormModal({
     </div>
   );
 }
-

@@ -37,6 +37,7 @@ class ResourceAPITests(TestCase):
 
         self.student = User.objects.create_user(username="student1", password="Password123!", role=User.ROLE_STUDENT)
         self.custodian = User.objects.create_user(username="custodian1", password="Password123!", role=User.ROLE_CUSTODIAN)
+        self.facility_mgr = User.objects.create_user(username="facmgr1", password="Password123!", role=User.ROLE_FACILITY_MGR)
         self.admin = User.objects.create_user(username="admin1", password="Password123!", role=User.ROLE_ADMIN)
 
         self.res1 = Resource.objects.create(
@@ -165,13 +166,13 @@ class ResourceAPITests(TestCase):
         response = self.client.post(url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_custodian_can_create_resource(self):
+    def test_custodian_cannot_create_resource(self):
         url = reverse('resource-list')
         token = Token.objects.get_or_create(user=self.custodian)[0]
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
 
         payload = {
-            'name': 'Authorized Lab',
+            'name': 'Custodian Attempted Lab',
             'resource_type': self.res_type_1.id,
             'description': 'Created by custodian',
             'capacity': 40,
@@ -179,7 +180,79 @@ class ResourceAPITests(TestCase):
             'status': 'available'
         }
         response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_create_resource(self):
+        url = reverse('resource-list')
+        token = Token.objects.get_or_create(user=self.admin)[0]
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+
+        payload = {
+            'name': 'Admin Authorized Lab',
+            'resource_type': self.res_type_1.id,
+            'description': 'Created by admin',
+            'capacity': 40,
+            'location': 'Block 5 Room 12',
+            'status': 'available'
+        }
+        response = self.client.post(url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["name"], "Authorized Lab")
-        self.assertEqual(response.data["custodian_name"], self.custodian.username)
+        self.assertEqual(response.data["name"], "Admin Authorized Lab")
+
+    def test_facility_mgr_can_create_resource(self):
+        url = reverse('resource-list')
+        token = Token.objects.get_or_create(user=self.facility_mgr)[0]
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+
+        payload = {
+            'name': 'Facility Mgr Lab',
+            'resource_type': self.res_type_1.id,
+            'description': 'Created by facility manager',
+            'capacity': 45,
+            'location': 'Block 6 Room 10',
+            'status': 'available'
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_anonymous_cannot_create_resource(self):
+        url = reverse('resource-list')
+        self.client.credentials()
+        payload = {
+            'name': 'Anon Lab',
+            'resource_type': self.res_type_1.id,
+            'description': 'Anon create',
+            'capacity': 20,
+            'location': 'Anon Location',
+            'status': 'available'
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_resource_type_creation_permissions(self):
+        url = reverse('resource-type-list')
+        payload = {'name': 'Robotics Lab', 'icon': 'bot', 'description': 'Robotics'}
+
+        # Anonymous cannot create resource type
+        self.client.credentials()
+        resp_anon = self.client.post(url, payload, format='json')
+        self.assertEqual(resp_anon.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Student cannot create resource type
+        token_student = Token.objects.get_or_create(user=self.student)[0]
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token_student.key)
+        resp_student = self.client.post(url, payload, format='json')
+        self.assertEqual(resp_student.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Custodian cannot create resource type
+        token_custodian = Token.objects.get_or_create(user=self.custodian)[0]
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token_custodian.key)
+        resp_custodian = self.client.post(url, payload, format='json')
+        self.assertEqual(resp_custodian.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Facility manager can create resource type
+        token_mgr = Token.objects.get_or_create(user=self.facility_mgr)[0]
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token_mgr.key)
+        resp_mgr = self.client.post(url, payload, format='json')
+        self.assertEqual(resp_mgr.status_code, status.HTTP_201_CREATED)
 

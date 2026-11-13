@@ -62,6 +62,8 @@ class Command(BaseCommand):
                 'features': ['Surround Sound System', 'Dual 4K Laser Projectors', 'Stage Lighting', 'Podium & Wireless Mics', 'Live Stream Control Rig'],
                 'image_url': 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=800&q=80',
                 'status': 'available',
+                'requires_approval': True,
+                'department': 'Central IT Administration',
             },
             {
                 'name': 'Quantum Physics & Cryogenics Research Lab',
@@ -72,6 +74,8 @@ class Command(BaseCommand):
                 'features': ['Cryogenic Cooling Rig', 'Laser Optics Table', 'Class 100 Cleanroom', 'RF Shielding', 'Emergency Power Backup'],
                 'image_url': 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=800&q=80',
                 'status': 'available',
+                'requires_approval': True,
+                'department': 'Physics Department',
             },
             {
                 'name': 'Executive Senate Conference Room',
@@ -128,7 +132,7 @@ class Command(BaseCommand):
         created_count = 0
         for r_data in resources_data:
             res_type = type_objs[r_data['type']]
-            _, created = Resource.objects.get_or_create(
+            res, created = Resource.objects.get_or_create(
                 name=r_data['name'],
                 defaults={
                     'resource_type': res_type,
@@ -139,8 +143,14 @@ class Command(BaseCommand):
                     'image_url': r_data['image_url'],
                     'status': r_data['status'],
                     'custodian': custodian_user,
+                    'department': r_data.get('department', 'Computer Science'),
+                    'requires_approval': r_data.get('requires_approval', False),
                 }
             )
+            if not created:
+                res.department = r_data.get('department', 'Computer Science')
+                res.requires_approval = r_data.get('requires_approval', False)
+                res.save()
             if created:
                 created_count += 1
 

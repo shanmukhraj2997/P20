@@ -12,10 +12,17 @@ if env_path.exists():
 else:
     from decouple import config
 
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-p20-campus-booking-platform-secret-key-sprint1')
-DEBUG = config('DEBUG', default=True, cast=bool)
+from django.core.exceptions import ImproperlyConfigured
 
-allowed_hosts_raw = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver')
+DEBUG = config('DEBUG', default=True, cast=bool)
+if DEBUG:
+    SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-p20-campus-booking-platform-secret-key-sprint1')
+else:
+    SECRET_KEY = config('DJANGO_SECRET_KEY', default=None)
+    if not SECRET_KEY:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in the environment when DEBUG=False.")
+
+allowed_hosts_raw = config('ALLOWED_HOSTS', default='*' if DEBUG else 'localhost,127.0.0.1,testserver')
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
 if 'testserver' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('testserver')
@@ -80,6 +87,7 @@ DATABASES = {
         'PASSWORD': config('POSTGRES_PASSWORD', default='postgres'),
         'HOST': config('POSTGRES_HOST', default='127.0.0.1'),
         'PORT': config('POSTGRES_PORT', default='5432'),
+        'CONN_MAX_AGE': config('CONN_MAX_AGE', default=0, cast=int),
     }
 }
 
@@ -111,8 +119,11 @@ REST_FRAMEWORK = {
     ],
 }
 
-cors_origins_raw = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000')
-CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_origins_raw.split(',') if o.strip()]
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    cors_origins_raw = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000')
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_origins_raw.split(',') if o.strip()]
 CORS_ALLOW_CREDENTIALS = True
 
 LANGUAGE_CODE = 'en-us'
@@ -127,3 +138,37 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Check-in Configuration
+CHECKIN_GRACE_PERIOD_MINUTES = config('CHECKIN_GRACE_PERIOD_MINUTES', default=30, cast=int)
+
+# Celery & Redis Configuration
+REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379/0')
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default=REDIS_URL)
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default=REDIS_URL)
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', default=False, cast=bool)
+
+# Email Configuration
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@campus.edu')
+
+# Celery Beat Schedule
+CELERY_BEAT_SCHEDULE = {
+    'release-no-shows-every-minute': {
+        'task': 'bookings.tasks.release_no_shows',
+        'schedule': 60.0,
+    },
+    'send-booking-reminders-every-minute': {
+        'task': 'bookings.tasks.send_booking_reminders',
+        'schedule': 60.0,
+    },
+}
+

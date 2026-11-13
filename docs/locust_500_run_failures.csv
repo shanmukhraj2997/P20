@@ -1,0 +1,8 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,/api/bookings/ [Shared Slot Contention],"CatchResponseError('Unexpected response code: 500 - <!DOCTYPE html>\n<html lang=""en"">\n<head>\n  <meta http-equiv=""content-type"" content=""text/html; charse')",11,2026-11-13T14:21:01Z,2026-11-13T14:21:14Z
+POST,/api/accounts/login/ [Auth],CatchResponseError('Login returned status 0'),173,2026-11-13T14:20:49Z,2026-11-13T14:21:14Z
+GET,/api/resources/[id]/availability/ [Calendar],CatchResponseError('Availability check failed: 0'),369,2026-11-13T14:20:48Z,2026-11-13T14:21:14Z
+GET,/api/resources/ [Catalogue],CatchResponseError('Catalogue query failed: 0'),499,2026-11-13T14:20:48Z,2026-11-13T14:21:14Z
+POST,/api/accounts/login/ [Auth],CatchResponseError('Login returned status 500'),2,2026-11-13T14:21:12Z,2026-11-13T14:21:13Z
+GET,/api/resources/[id]/availability/ [Calendar],CatchResponseError('Availability check failed: 500'),4,2026-11-13T14:21:02Z,2026-11-13T14:21:13Z
+POST,/api/bookings/ [Shared Slot Contention],CatchResponseError('Unexpected response code: 0 - '),883,2026-11-13T14:20:48Z,2026-11-13T14:21:14Z

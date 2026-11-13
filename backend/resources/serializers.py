@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from resources.models import ResourceType, Resource
+from resources.models import ResourceType, Resource, Consumable
 from accounts.models import User
 
 class ResourceTypeSerializer(serializers.ModelSerializer):
@@ -11,15 +11,22 @@ class ResourceListSerializer(serializers.ModelSerializer):
     resource_type_name = serializers.CharField(source='resource_type.name', read_only=True)
     resource_type_icon = serializers.CharField(source='resource_type.icon', read_only=True)
     custodian_name = serializers.SerializerMethodField()
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    status = serializers.SerializerMethodField()
+    status_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Resource
         fields = [
             'id', 'name', 'resource_type', 'resource_type_name', 'resource_type_icon',
-            'capacity', 'location', 'custodian', 'custodian_name', 'image_url',
-            'status', 'status_display', 'features', 'created_at'
+            'capacity', 'location', 'department', 'custodian', 'custodian_name', 'image_url',
+            'status', 'status_display', 'max_duration_hours', 'requires_approval', 'features', 'created_at'
         ]
+
+    def get_status(self, obj):
+        return obj.status
+
+    def get_status_display(self, obj):
+        return obj.get_status_display()
 
     def get_custodian_name(self, obj):
         if obj.custodian:
@@ -31,16 +38,23 @@ class ResourceDetailSerializer(serializers.ModelSerializer):
     custodian_name = serializers.SerializerMethodField()
     custodian_email = serializers.SerializerMethodField()
     custodian_phone = serializers.SerializerMethodField()
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    status = serializers.SerializerMethodField()
+    status_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Resource
         fields = [
             'id', 'name', 'resource_type', 'resource_type_detail', 'description',
-            'capacity', 'location', 'custodian', 'custodian_name', 'custodian_email',
+            'capacity', 'location', 'department', 'custodian', 'custodian_name', 'custodian_email',
             'custodian_phone', 'features', 'image_url', 'status', 'status_display',
-            'created_at', 'updated_at'
+            'max_duration_hours', 'requires_approval', 'created_at', 'updated_at'
         ]
+
+    def get_status(self, obj):
+        return obj.status
+
+    def get_status_display(self, obj):
+        return obj.get_status_display()
 
     def get_custodian_name(self, obj):
         if obj.custodian:
@@ -52,3 +66,19 @@ class ResourceDetailSerializer(serializers.ModelSerializer):
 
     def get_custodian_phone(self, obj):
         return obj.custodian.phone_number if obj.custodian else ""
+
+class ConsumableSerializer(serializers.ModelSerializer):
+    resource_name = serializers.CharField(source='resource.name', read_only=True)
+    is_low_stock = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Consumable
+        fields = [
+            'id', 'name', 'unit', 'stock', 'reorder_level', 'is_low_stock',
+            'resource', 'resource_name', 'created_at', 'updated_at'
+        ]
+
+    def validate_stock(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Stock cannot be negative.")
+        return value

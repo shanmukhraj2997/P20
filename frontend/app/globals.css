@@ -1,17 +1,142 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #F58220;
+  --color-primary-hover: #D96A0B;
+  --color-primary-tint: #FFF3E6;
+
+  --color-lpu-orange: #F58220;
+  --color-lpu-orange-hover: #D96A0B;
+  --color-lpu-orange-tint: #FFF3E6;
+
+  --color-lpu-black: #111111;
+  --color-lpu-white: #FFFFFF;
+  --color-lpu-bg: #F5F5F5;
+  --color-lpu-border: #E5E5E5;
+  --color-lpu-muted: #6B6B6B;
+}
+
+:root {
+  --primary-orange: #F58220;
+  --primary-orange-hover: #D96A0B;
+  --primary-orange-tint: #FFF3E6;
+  --lpu-black: #111111;
+  --lpu-white: #FFFFFF;
+  --lpu-bg: #F5F5F5;
+  --lpu-border: #E5E5E5;
+  --lpu-muted: #6B6B6B;
+}
+
 @layer base {
   body {
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: var(--lpu-bg);
+    color: var(--lpu-black);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
 }
 
 /* Glassmorphism utility */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid #E5E5E5;
+}
+
+/* Primary Button Styling */
+.btn-primary {
+  background-color: #F58220;
+  color: #FFFFFF;
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+}
+.btn-primary:hover {
+  background-color: #D96A0B;
+}
+.btn-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #F58220;
+}
+
+/* Secondary Button Styling */
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: #111111;
+  border: 1.5px solid #111111;
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+}
+.btn-secondary:hover {
+  background-color: #F5F5F5;
+}
+.btn-secondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #111111;
+}
+
+/* FullCalendar LPU Orange & Hatched Theme */
+.fc .fc-button-primary {
+  background-color: #F58220 !important;
+  border-color: #F58220 !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+  text-transform: capitalize !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.fc .fc-button-primary:hover {
+  background-color: #D96A0B !important;
+  border-color: #D96A0B !important;
+}
+
+.fc .fc-button-primary:disabled {
+  background-color: #E5E5E5 !important;
+  border-color: #E5E5E5 !important;
+  color: #6B6B6B !important;
+  opacity: 0.7 !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: #D96A0B !important;
+  border-color: #D96A0B !important;
+}
+
+.fc .fc-button-primary:focus {
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #F58220 !important;
+}
+
+.fc .fc-day-today {
+  background-color: #FFF3E6 !important;
+}
+
+.fc .fc-highlight {
+  background-color: rgba(245, 130, 32, 0.25) !important;
+}
+
+.fc-theme-standard td, .fc-theme-standard th {
+  border-color: #E5E5E5 !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: #111111 !important;
+  font-weight: 600 !important;
+}
+
+/* Blackout Hatched Pattern in FullCalendar */
+.fc-bg-event[style*="rgb(185, 28, 28)"],
+.fc-bg-event[style*="#b91c1c"],
+.fc-bg-event[style*="rgb(239, 68, 68)"],
+.fc-bg-event[style*="#ef4444"],
+.fc-blackout-event {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(185, 28, 28, 0.15),
+    rgba(185, 28, 28, 0.15) 8px,
+    rgba(185, 28, 28, 0.3) 8px,
+    rgba(185, 28, 28, 0.3) 16px
+  ) !important;
+  border-left: 3px solid #b91c1c !important;
+  border-right: 3px solid #b91c1c !important;
 }

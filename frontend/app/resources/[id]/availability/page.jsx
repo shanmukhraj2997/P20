@@ -30,6 +30,8 @@ export default function AvailabilityBookingPage({ params }) {
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('11:00');
   const [purpose, setPurpose] = useState('');
+  const [availableConsumables, setAvailableConsumables] = useState([]);
+  const [selectedConsumables, setSelectedConsumables] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -48,12 +50,19 @@ export default function AvailabilityBookingPage({ params }) {
     setBookingDate(dateStr);
   }, []);
 
-  // Load Resource details
+  // Load Resource details and available consumables
   useEffect(() => {
     if (user && id) {
       api.resources.get(id)
         .then((data) => setResource(data))
         .catch((err) => setError(err.message || 'Failed to load resource details.'));
+
+      api.consumables.list({ resource: id })
+        .then((data) => {
+          const items = Array.isArray(data) ? data : data.results || [];
+          setAvailableConsumables(items);
+        })
+        .catch(() => {});
     }
   }, [user, id]);
 
@@ -121,12 +130,17 @@ export default function AvailabilityBookingPage({ params }) {
     const startIso = startDateObj.toISOString();
     const endIso = endDateObj.toISOString();
 
+    const consumablesPayload = Object.entries(selectedConsumables)
+      .filter(([_, qty]) => qty > 0)
+      .map(([cid, qty]) => ({ consumable_id: parseInt(cid, 10), quantity: qty }));
+
     try {
       const result = await api.bookings.create({
         resource: parseInt(id, 10),
         start_time: startIso,
         end_time: endIso,
         purpose: purpose.trim(),
+        consumables: consumablesPayload,
       });
 
       setSuccessMessage(`Booking #${result.id} confirmed successfully!`);
@@ -143,19 +157,18 @@ export default function AvailabilityBookingPage({ params }) {
     } finally {
       setSubmitting(false);
     }
-
   };
 
   if (authLoading || (!user && loading)) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 text-sm">
+      <div className="min-h-screen bg-[#111111] flex items-center justify-center text-[#6B6B6B] text-sm">
         Loading availability schedule...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
       <Header />
       <div className="flex flex-1">
         <Sidebar />
@@ -165,7 +178,7 @@ export default function AvailabilityBookingPage({ params }) {
           <div className="flex items-center justify-between">
             <Link
               href={`/resources/${id}`}
-              className="inline-flex items-center space-x-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs transition-all"
+              className="inline-flex items-center space-x-2 text-xs font-semibold text-[#111111] hover:text-[#F58220] bg-white px-3.5 py-2 rounded-xl border border-[#E5E5E5] hover:border-[#F58220] shadow-2xs transition-all"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -173,41 +186,41 @@ export default function AvailabilityBookingPage({ params }) {
               <span>Back to Resource Details</span>
             </Link>
 
-            <span className="text-xs text-slate-400 font-mono">Module M2/M3 • Conflict-Safe Booking Engine</span>
+            <span className="text-xs text-[#6B6B6B] font-mono">Module M2/M3 • Conflict-Safe Booking Engine</span>
           </div>
 
           {resource && (
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-white p-6 rounded-2xl border border-[#E5E5E5] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center space-x-2 text-xs text-indigo-600 font-bold uppercase tracking-wider mb-1">
+                <div className="flex items-center space-x-2 text-xs text-[#F58220] font-bold uppercase tracking-wider mb-1">
                   <span>{resource.resource_type_name}</span>
                   <span>•</span>
                   <StatusBadge status={resource.status} display={resource.status_display} />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900">{resource.name}</h2>
-                <p className="text-xs text-slate-500 mt-1">Location: {resource.location} | Capacity: {resource.capacity} Seats</p>
+                <h2 className="text-2xl font-bold text-[#111111]">{resource.name}</h2>
+                <p className="text-xs text-[#6B6B6B] mt-1">Location: {resource.location} | Capacity: {resource.capacity} Seats</p>
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
-                <div className="font-bold text-slate-800">Database Overlap Protection</div>
-                <div className="text-[11px] text-emerald-700 font-mono">PostgreSQL btree_gist Range Enforcement</div>
+              <div className="bg-[#F5F5F5] p-3 rounded-xl border border-[#E5E5E5] text-xs">
+                <div className="font-bold text-[#111111]">Database Overlap Protection</div>
+                <div className="text-[11px] text-emerald-800 font-mono font-semibold">PostgreSQL btree_gist Range Enforcement</div>
               </div>
             </div>
           )}
 
           {/* Alert Banners */}
           {bookingError && (
-            <div className="p-4 rounded-xl bg-red-50 border-2 border-red-300 text-red-900 text-xs font-semibold flex items-start justify-between shadow-xs">
+            <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-300 text-rose-900 text-xs font-semibold flex items-start justify-between shadow-xs">
               <div className="flex items-start space-x-3">
-                <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div className="space-y-0.5">
-                  <div className="font-bold text-red-800">Booking Conflict Prevented</div>
-                  <div className="text-red-700 leading-relaxed">{bookingError}</div>
+                  <div className="font-bold text-rose-800">Booking Conflict Prevented</div>
+                  <div className="text-rose-700 leading-relaxed">{bookingError}</div>
                 </div>
               </div>
-              <button onClick={() => setBookingError(null)} className="text-red-600 hover:text-red-800 text-xs font-bold shrink-0 ml-4">Dismiss</button>
+              <button onClick={() => setBookingError(null)} className="text-rose-700 hover:text-rose-900 text-xs font-bold shrink-0 ml-4 cursor-pointer">Dismiss</button>
             </div>
           )}
 
@@ -223,38 +236,37 @@ export default function AvailabilityBookingPage({ params }) {
           {/* Grid Layout: FullCalendar (left) + Booking Form Panel (right) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* FullCalendar Schedule View */}
-            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-100 gap-2">
+            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#E5E5E5] shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-[#E5E5E5] gap-2">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                  <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">
                     Resource Availability Calendar
                   </h3>
-                  <span className="text-[11px] text-slate-500">Drag or click any empty slot to select a booking time</span>
+                  <span className="text-[11px] text-[#6B6B6B]">Drag or click any empty slot to select a booking time</span>
                 </div>
 
-                {/* Calendar Color Legend */}
-                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-                  <div className="flex items-center space-x-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
+                {/* Calendar Color Legend (Rule 6: own = #F58220, others = #444444, blackout = hatched/muted red) */}
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-[#111111] bg-[#F5F5F5] px-3 py-1.5 rounded-xl border border-[#E5E5E5]">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#F58220] inline-block shadow-2xs"></span>
                     <span>My Booking</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block"></span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#444444] inline-block shadow-2xs"></span>
                     <span>Reserved</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#b91c1c] inline-block shadow-2xs"></span>
                     <span>Blackout</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block shadow-2xs"></span>
                     <span>Available</span>
                   </div>
                 </div>
               </div>
 
               <div className="fullcalendar-wrapper text-xs">
-
                 <FullCalendar
                   ref={calendarRef}
                   plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -276,55 +288,55 @@ export default function AvailabilityBookingPage({ params }) {
             </div>
 
             {/* Booking Form Panel */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="border-b border-slate-100 pb-3">
-                <h3 className="text-sm font-bold text-slate-900">Book Resource</h3>
-                <p className="text-xs text-slate-500">Submit time slot for PostgreSQL conflict verification</p>
+            <div className="bg-white p-6 rounded-2xl border border-[#E5E5E5] shadow-2xs space-y-4">
+              <div className="border-b border-[#E5E5E5] pb-3">
+                <h3 className="text-sm font-bold text-[#111111]">Book Resource</h3>
+                <p className="text-xs text-[#6B6B6B]">Submit time slot for PostgreSQL conflict verification</p>
               </div>
 
               <form onSubmit={handleBookingSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Target Resource</label>
+                  <label className="block text-xs font-semibold text-[#111111] mb-1">Target Resource</label>
                   <input
                     type="text"
                     readOnly
                     value={resource ? resource.name : 'Loading...'}
-                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 cursor-not-allowed"
+                    className="w-full px-3 py-2 bg-[#F5F5F5] border border-[#E5E5E5] rounded-lg text-xs font-medium text-[#111111] cursor-not-allowed"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Booking Date</label>
+                  <label className="block text-xs font-semibold text-[#111111] mb-1">Booking Date</label>
                   <input
                     type="date"
                     required
                     value={bookingDate}
                     onChange={(e) => setBookingDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E5E5E5] rounded-lg text-xs text-[#111111] focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220] focus:outline-none"
                     id="booking-date-input"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Start Time</label>
+                    <label className="block text-xs font-semibold text-[#111111] mb-1">Start Time</label>
                     <input
                       type="time"
                       required
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-white border border-[#E5E5E5] rounded-lg text-xs text-[#111111] focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220] focus:outline-none"
                       id="booking-start-input"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">End Time</label>
+                    <label className="block text-xs font-semibold text-[#111111] mb-1">End Time</label>
                     <input
                       type="time"
                       required
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-white border border-[#E5E5E5] rounded-lg text-xs text-[#111111] focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220] focus:outline-none"
                       id="booking-end-input"
                     />
                   </div>
@@ -332,7 +344,7 @@ export default function AvailabilityBookingPage({ params }) {
 
                 {/* Duration Presets */}
                 <div className="flex items-center space-x-2 pt-1">
-                  <span className="text-[11px] text-slate-500">Quick Duration:</span>
+                  <span className="text-[11px] text-[#6B6B6B]">Quick Duration:</span>
                   {[1, 2, 3].map((hours) => (
                     <button
                       key={hours}
@@ -344,7 +356,7 @@ export default function AvailabilityBookingPage({ params }) {
                           setEndTime(`${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
                         }
                       }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 rounded text-[11px] font-semibold border border-slate-200 transition-colors"
+                      className="px-2 py-0.5 bg-[#F5F5F5] hover:bg-[#FFF3E6] hover:text-[#D96A0B] text-[#111111] rounded text-[11px] font-semibold border border-[#E5E5E5] hover:border-[#F58220] transition-colors cursor-pointer"
                     >
                       +{hours}h
                     </button>
@@ -352,22 +364,75 @@ export default function AvailabilityBookingPage({ params }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Booking Purpose & Details</label>
+                  <label className="block text-xs font-semibold text-[#111111] mb-1">Booking Purpose & Details</label>
                   <textarea
                     required
                     rows="3"
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
                     placeholder="e.g. Artificial Intelligence Research Group Experiment Session"
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-[#E5E5E5] rounded-lg text-xs text-[#111111] placeholder-[#6B6B6B] focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220] focus:outline-none"
                     id="booking-purpose-input"
                   ></textarea>
                 </div>
 
+                {/* Optional Consumables Allocation */}
+                {availableConsumables.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-[#E5E5E5]">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-semibold text-[#111111]">Reserve Consumables</label>
+                      <span className="text-[10px] text-[#6B6B6B] font-medium">Optional</span>
+                    </div>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {availableConsumables.map((c) => {
+                        const qty = selectedConsumables[c.id] || 0;
+                        const isOut = c.stock <= 0;
+                        return (
+                          <div key={c.id} className="flex items-center justify-between p-2 rounded-xl bg-[#F5F5F5] border border-[#E5E5E5] text-xs">
+                            <div className="min-w-0 pr-2">
+                              <p className="font-semibold text-[#111111] truncate">{c.name}</p>
+                              <p className="text-[10px] text-[#6B6B6B]">
+                                {isOut ? (
+                                  <span className="text-rose-600 font-semibold">Out of Stock</span>
+                                ) : (
+                                  <span>{c.stock} {c.unit} available</span>
+                                )}
+                              </p>
+                            </div>
+                            {!isOut ? (
+                              <div className="flex items-center space-x-2 shrink-0">
+                                <button
+                                  type="button"
+                                  disabled={qty <= 0}
+                                  onClick={() => setSelectedConsumables(prev => ({ ...prev, [c.id]: Math.max(0, qty - 1) }))}
+                                  className="w-6 h-6 rounded-lg bg-white border border-[#E5E5E5] text-[#111111] font-bold flex items-center justify-center hover:bg-[#F5F5F5] disabled:opacity-40 cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="w-5 text-center font-bold text-[#111111]">{qty}</span>
+                                <button
+                                  type="button"
+                                  disabled={qty >= c.stock}
+                                  onClick={() => setSelectedConsumables(prev => ({ ...prev, [c.id]: Math.min(c.stock, qty + 1) }))}
+                                  className="w-6 h-6 rounded-lg bg-white border border-[#E5E5E5] text-[#111111] font-bold flex items-center justify-center hover:bg-[#F5F5F5] disabled:opacity-40 cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-[#6B6B6B] italic">Unavailable</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-50"
+                  className="w-full py-3 bg-[#F58220] hover:bg-[#D96A0B] text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-50 focus:ring-2 focus:ring-[#F58220] cursor-pointer"
                   id="submit-booking-btn"
                 >
                   {submitting ? 'Verifying Conflict-Free Slot...' : 'Confirm Booking'}
