@@ -1,3 +1,6 @@
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -178,5 +181,90 @@ class NotificationMarkAllReadView(APIView):
             "message": f"All {updated_count} unread notifications marked as read.",
             "marked_count": updated_count
         }, status=status.HTTP_200_OK)
+
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        identifier = (request.data.get('email_or_username') or request.data.get('email') or request.data.get('username') or '').strip()
+        if not identifier:
+            return Response({"detail": "Please provide your registered username or email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lookup user by username or email (case-insensitive)
+        user = User.objects.filter(models.Q(username__iexact=identifier) | models.Q(email__iexact=identifier)).first()
+        if not user:
+            # Fallback check for demo_<identifier>
+            user = User.objects.filter(username__iexact=f"demo_{identifier}").first()
+
+        if not user:
+            return Response({"detail": f"No account found with username or email '{identifier}'."}, status=status.HTTP_404_NOT_FOUND)
+
+        token = default_token_generator.make_token(user)
+
+        # Attempt sending email if SMTP is configured
+        try:
+            if getattr(settings, 'EMAIL_HOST_USER', None):
+                send_mail(
+                    subject="LPU Campus Booking - Password Reset Request",
+                    message=f"Hello {user.first_name or user.username},\n\nYour password reset verification code is: {token}\n\nUse this code to set a new password on the portal.",
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@lpu.co.in'),
+                    recipient_list=[user.email] if user.email else [],
+                    fail_silently=True,
+                )
+        except Exception:
+            pass
+
+        return Response({
+            "message": "Password reset token generated successfully.",
+            "username": user.username,
+            "email": user.email,
+            "reset_token": token
+        }, status=status.HTTP_200_OK)
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        username = (request.data.get('username') or '').strip()
+        token = (request.data.get('token') or '').strip()
+        new_password = (request.data.get('new_password') or '').strip()
+
+        if not username or not new_password:
+            return Response({"detail": "Username and new password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_password) < 6:
+            return Response({"detail": "Password must be at least 6 characters long."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(username__iexact=username).first()
+        if not user:
+            user = User.objects.filter(username__iexact=f"demo_{username}").first()
+
+        if not user:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validate token if provided
+        if token and not default_token_generator.check_token(user, token):
+            return Response({"detail": "Invalid or expired reset token."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        try:
+            # Delete old auth token so user logs in afresh
+            Token.objects.filter(user=user).delete()
+        except Exception:
+            pass
+
+        Notification.objects.create(
+            user=user,
+            type=Notification.TYPE_GENERAL,
+            title="Password Changed",
+            message="Your account password was successfully reset."
+        )
+
+        return Response({
+            "message": "Password has been successfully reset! You can now log in with your new password."
+        }, status=status.HTTP_200_OK)
+
 
 
