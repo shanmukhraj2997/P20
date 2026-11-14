@@ -115,7 +115,7 @@ class Command(BaseCommand):
                 'description': 'High-resolution laser scanning confocal microscope workstation for 3D cellular imaging and fluorescence spectral analysis.',
                 'features': ['Laser Scanning Head', 'Fluorescence Channels', 'High-Spec Analysis PC', 'Vibration Table'],
                 'image_url': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80',
-                'status': 'maintenance',
+                'status': 'available',
             },
             {
                 'name': 'Robotics & Rapid Prototyping Workshop',

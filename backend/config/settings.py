@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -90,6 +91,15 @@ DATABASES = {
         'CONN_MAX_AGE': config('CONN_MAX_AGE', default=0, cast=int),
     }
 }
+
+DATABASE_URL = config('DATABASE_URL', default=None)
+if DATABASE_URL:
+    try:
+        import dj_database_url
+        DATABASES['default'] = dj_database_url.parse(DATABASE_URL)
+        DATABASES['default']['CONN_MAX_AGE'] = config('CONN_MAX_AGE', default=600, cast=int)
+    except ImportError:
+        pass
 
 AUTH_USER_MODEL = 'accounts.User'
 

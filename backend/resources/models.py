@@ -99,10 +99,22 @@ class Resource(models.Model):
         val = super().__getattribute__(name)
         if name == 'status':
             import sys
-            caller = sys._getframe(1).f_code.co_name
-            if caller in ('pre_save', 'get_db_prep_save', '_save_table', '_do_insert', '_do_update'):
-                return val
             try:
+                frame = sys._getframe(1)
+                caller = frame.f_code.co_name
+                filename = frame.f_code.co_filename.replace('\\', '/')
+                # Do not intercept during DB persistence, model validation, ModelForms, or Django Admin
+                if (
+                    caller in (
+                        'pre_save', 'get_db_prep_save', '_save_table', '_do_insert', '_do_update',
+                        'value_from_object', '_get_val_from_obj', 'clean', 'clean_fields',
+                        'full_clean', 'prepare_value', 'value', 'save_form_data'
+                    )
+                    or 'django/forms' in filename
+                    or 'django/contrib/admin' in filename
+                ):
+                    return val
+
                 if val != 'decommissioned' and self.is_under_maintenance:
                     return 'maintenance'
             except Exception:
