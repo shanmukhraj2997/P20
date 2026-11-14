@@ -15,12 +15,10 @@ else:
 from django.core.exceptions import ImproperlyConfigured
 
 DEBUG = config('DEBUG', default=True, cast=bool)
-if DEBUG:
-    SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-p20-campus-booking-platform-secret-key-sprint1')
-else:
-    SECRET_KEY = config('DJANGO_SECRET_KEY', default=None)
-    if not SECRET_KEY:
-        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in the environment when DEBUG=False.")
+default_secret = 'django-insecure-p20-campus-booking-platform-secret-key-sprint1'
+SECRET_KEY = config('DJANGO_SECRET_KEY', default=config('SECRET_KEY', default=default_secret if DEBUG else None))
+if not SECRET_KEY and not DEBUG:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY (or SECRET_KEY) must be set in the environment when DEBUG=False.")
 
 allowed_hosts_raw = config('ALLOWED_HOSTS', default='*' if DEBUG else 'localhost,127.0.0.1,testserver')
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
