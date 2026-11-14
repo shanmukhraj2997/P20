@@ -5,14 +5,13 @@ databases:
     plan: free
 
 services:
-  # Django REST Backend Web Service
+  # Django REST Backend Web Service (Docker Container)
   - type: web
     name: p20-backend
-    runtime: python
+    runtime: docker
     plan: free
-    rootDir: backend
-    buildCommand: "pip install -r ../requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py seed_demo_users && python manage.py seed_resources"
-    startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
     envVars:
       - key: DATABASE_URL
         fromDatabase:

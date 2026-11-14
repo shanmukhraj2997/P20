@@ -6,11 +6,22 @@ python - << 'EOF'
 import socket
 import time
 import os
+from urllib.parse import urlparse
 
-host = os.environ.get('POSTGRES_HOST', 'db')
-port = int(os.environ.get('POSTGRES_PORT', 5432))
+db_url = os.environ.get('DATABASE_URL')
+if db_url:
+    try:
+        parsed = urlparse(db_url)
+        host = parsed.hostname or '127.0.0.1'
+        port = parsed.port or 5432
+    except Exception:
+        host = os.environ.get('POSTGRES_HOST', 'db')
+        port = int(os.environ.get('POSTGRES_PORT', 5432))
+else:
+    host = os.environ.get('POSTGRES_HOST', 'db')
+    port = int(os.environ.get('POSTGRES_PORT', 5432))
 
-for _ in range(60):
+for i in range(60):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(2.0)
@@ -18,19 +29,21 @@ for _ in range(60):
         s.close()
         print(f"==> PostgreSQL reachable at {host}:{port}")
         break
-    except Exception:
+    except Exception as e:
         time.sleep(1)
 else:
-    print(f"==> ERROR: Timeout connecting to PostgreSQL at {host}:{port}")
-    exit(1)
+    print(f"==> WARNING: Could not connect to {host}:{port} within timeout. Proceeding with migrations...")
 EOF
+
+echo "==> Collecting static assets..."
+python manage.py collectstatic --noinput || true
 
 echo "==> Running database migrations..."
 python manage.py migrate --noinput
 
 echo "==> Seeding standard demo accounts & resources..."
-python manage.py seed_demo_users
-python manage.py seed_resources
+python manage.py seed_demo_users || true
+python manage.py seed_resources || true
 
-echo "==> Starting Gunicorn Application Server..."
+echo "==> Launching Application Server..."
 exec "$@"
