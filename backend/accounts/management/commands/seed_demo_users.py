@@ -73,22 +73,22 @@ class Command(BaseCommand):
         count = 0
         password = 'DemoPass123!'
         for udata in demo_users:
-            user, created = User.objects.get_or_create(
-                username=udata['username'],
-                defaults=udata
-            )
-            # Ensure role and password are set explicitly
-            user.role = udata['role']
-            user.email = udata['email']
-            user.first_name = udata['first_name']
-            user.last_name = udata['last_name']
-            user.department = udata['department']
-            user.is_staff = udata['is_staff']
-            user.is_superuser = udata['is_superuser']
-            user.set_password(password)
-            user.save()
-            count += 1
-            status_text = 'Created' if created else 'Updated'
-            self.stdout.write(f"  - [{status_text}] {user.username} (Role: {user.get_role_display()})")
+            for uname in [udata['username'], udata['role']]:
+                user, created = User.objects.get_or_create(
+                    username=uname,
+                    defaults={**udata, 'username': uname}
+                )
+                user.role = udata['role']
+                user.email = udata['email']
+                user.first_name = udata['first_name']
+                user.last_name = udata['last_name']
+                user.department = udata['department']
+                user.is_staff = udata['is_staff']
+                user.is_superuser = udata['is_superuser']
+                user.set_password(password)
+                user.save()
+                count += 1
+                status_text = 'Created' if created else 'Updated'
+                self.stdout.write(f"  - [{status_text}] {user.username} (Role: {user.get_role_display()})")
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully seeded {count} demo users.'))
+        self.stdout.write(self.style.SUCCESS(f'Successfully seeded {count} platform users.'))

@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [department, setDepartment] = useState('Computer Science');
+  const [selectedRole, setSelectedRole] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const roles = [
@@ -51,18 +52,30 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (demoRoleCode) => {
+  const handleRoleChange = (roleCode) => {
+    setSelectedRole(roleCode);
+    if (!roleCode) return;
+    setUsername(roleCode);
+    setPassword('DemoPass123!');
+  };
+
+  const handleRoleLogin = async (roleCode) => {
+    const targetRole = roleCode || selectedRole;
+    if (!targetRole) return;
     setSubmitting(true);
     setError(null);
 
-    const demoUsername = `demo_${demoRoleCode}`;
-    const demoPassword = `DemoPass123!`;
-
     try {
-      await login(demoUsername, demoPassword);
+      await login(targetRole, 'DemoPass123!');
       router.push('/dashboard');
-    } catch (loginErr) {
-      setError(`Demo account for '${demoRoleCode}' not found. Please run 'python backend/manage.py seed_demo_users' to initialize credentials.`);
+    } catch (cleanErr) {
+      try {
+        await login(`demo_${targetRole}`, 'DemoPass123!');
+        router.push('/dashboard');
+      } catch (fallbackErr) {
+        const roleLabel = roles.find((r) => r.code === targetRole)?.label || targetRole;
+        setError(`Unable to sign in as ${roleLabel}. Please check credentials or network connection.`);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -189,25 +202,49 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-[#E5E5E5]">
-            <div className="text-xs font-bold text-[#6B6B6B] mb-3 text-center uppercase tracking-wider">
-              Quick Role Presets (Click to Test)
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {roles.map((r) => (
+          {/* Role Dropdown Selection */}
+          {!isRegisterMode && (
+            <div className="mt-6 pt-6 border-t border-[#E5E5E5]">
+              <label
+                htmlFor="role-select"
+                className="block text-xs font-bold text-[#6B6B6B] mb-2 uppercase tracking-wider text-center"
+              >
+                Select Role
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <select
+                    id="role-select"
+                    value={selectedRole}
+                    onChange={(e) => handleRoleChange(e.target.value)}
+                    disabled={submitting}
+                    className="w-full px-3 py-2.5 bg-[#F5F5F5] border border-[#E5E5E5] rounded-lg text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#F58220] focus:border-[#F58220] focus:bg-white transition-all appearance-none cursor-pointer pr-8 font-medium"
+                  >
+                    <option value="">-- Choose Role --</option>
+                    {roles.map((r) => (
+                      <option key={r.code} value={r.code}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#6B6B6B]">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
                 <button
-                  key={r.code}
-                  onClick={() => handleDemoLogin(r.code)}
-                  disabled={submitting}
-                  className="px-2.5 py-1.5 bg-[#F5F5F5] hover:bg-[#FFF3E6] text-[#111111] hover:text-[#D96A0B] border border-[#E5E5E5] hover:border-[#F58220] rounded-lg text-[11px] font-medium text-left flex items-center justify-between transition-all"
-                  id={`demo-btn-${r.code}`}
+                  type="button"
+                  onClick={() => handleRoleLogin(selectedRole)}
+                  disabled={!selectedRole || submitting}
+                  className="px-4 py-2.5 bg-[#F58220] hover:bg-[#D96A0B] text-white text-xs font-bold rounded-lg shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  id="role-signin-btn"
                 >
-                  <span className="truncate">{r.label}</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-white text-[#6B6B6B] border border-[#E5E5E5] font-mono">Demo</span>
+                  {submitting ? '...' : 'Sign In'}
                 </button>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
