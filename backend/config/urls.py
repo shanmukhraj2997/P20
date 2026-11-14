@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.urls import path, include
-from config.views import health_check
+from config.views import health_check, api_root
 from bookings.views import TimetableImportView, TimetableListView
 from bookings.analytics_views import AnalyticsDashboardView, BookingsCsvExportView, UsageCsvExportView
 from resources.views import ConsumableListCreateView, ConsumableDetailView, ConsumableStockAdjustView
 from accounts.views import NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView
 
 urlpatterns = [
+    path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health-check'),
     path('api/accounts/', include('accounts.urls')),
