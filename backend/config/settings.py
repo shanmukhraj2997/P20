@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'resources.apps.ResourcesConfig',
     'bookings.apps.BookingsConfig',
     'availability.apps.AvailabilityConfig',
+    'permissionslips.apps.PermissionslipsConfig',
 ]
 
 MIDDLEWARE = [

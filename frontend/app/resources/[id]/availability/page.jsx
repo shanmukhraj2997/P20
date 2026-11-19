@@ -245,8 +245,12 @@ export default function AvailabilityBookingPage({ params }) {
                   <span className="text-[11px] text-[#6B6B6B]">Drag or click any empty slot to select a booking time</span>
                 </div>
 
-                {/* Calendar Color Legend (Rule 6: own = #F58220, others = #444444, blackout = hatched/muted red) */}
+                {/* Calendar Color Legend */}
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-[#111111] bg-[#F5F5F5] px-3 py-1.5 rounded-xl border border-[#E5E5E5]">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#7c3aed] inline-block shadow-2xs"></span>
+                    <span className="font-semibold text-purple-700">Official Allocation</span>
+                  </div>
                   <div className="flex items-center space-x-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-[#F58220] inline-block shadow-2xs"></span>
                     <span>My Booking</span>
@@ -283,6 +287,19 @@ export default function AvailabilityBookingPage({ params }) {
                   select={handleCalendarSelect}
                   events={events}
                   height="520px"
+                  eventContent={(eventInfo) => {
+                    const isOfficial = eventInfo.event.extendedProps?.is_official || eventInfo.event.extendedProps?.badge;
+                    return (
+                      <div className="p-0.5 overflow-hidden text-[10px] leading-tight w-full">
+                        <div className="font-bold truncate">{eventInfo.event.title}</div>
+                        {isOfficial && (
+                          <div className="bg-purple-950/90 text-purple-200 border border-purple-400/50 text-[8px] font-bold px-1 rounded mt-0.5 inline-block">
+                            OFFICIAL UNIVERSITY ALLOCATION
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }}
                 />
               </div>
             </div>

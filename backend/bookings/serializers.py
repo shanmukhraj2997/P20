@@ -203,11 +203,14 @@ class BookingSerializer(serializers.ModelSerializer):
     requester_name = serializers.SerializerMethodField()
     requester_role = serializers.CharField(source='requester.get_role_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    source_display = serializers.CharField(source='get_source_display', read_only=True)
     start_time = serializers.SerializerMethodField()
     end_time = serializers.SerializerMethodField()
     checked_in_by_name = serializers.SerializerMethodField()
+    checked_out_by_name = serializers.SerializerMethodField()
     reviewed_by_name = serializers.SerializerMethodField()
     can_check_in = serializers.SerializerMethodField()
+    can_check_out = serializers.SerializerMethodField()
     checkin_window_start = serializers.SerializerMethodField()
     checkin_window_end = serializers.SerializerMethodField()
     consumables = BookingConsumableSerializer(many=True, read_only=True)
@@ -217,8 +220,9 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'resource', 'resource_name', 'resource_location', 'resource_type_name',
             'requester', 'requester_name', 'requester_role', 'purpose', 'status', 'status_display',
-            'kind', 'series', 'timetable_entry', 'consumables',
-            'start_time', 'end_time', 'checkin_token', 'checked_in_at', 'checked_in_by_name',
+            'kind', 'source', 'source_display', 'series', 'timetable_entry', 'consumables',
+            'start_time', 'end_time', 'checked_in_at', 'checked_in_by_name',
+            'checked_out_at', 'checked_out_by_name', 'can_check_out',
             'no_show_at', 'reviewed_by', 'reviewed_by_name', 'reviewed_at', 'decision_note',
             'can_check_in', 'checkin_window_start', 'checkin_window_end',
             'created_at', 'updated_at'
@@ -244,6 +248,11 @@ class BookingSerializer(serializers.ModelSerializer):
             return obj.checked_in_by.get_full_name() or obj.checked_in_by.username
         return None
 
+    def get_checked_out_by_name(self, obj):
+        if obj.checked_out_by:
+            return obj.checked_out_by.get_full_name() or obj.checked_out_by.username
+        return None
+
     def get_reviewed_by_name(self, obj):
         if obj.reviewed_by:
             return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
@@ -257,6 +266,9 @@ class BookingSerializer(serializers.ModelSerializer):
             return False
         now = timezone.now()
         return w_start <= now <= w_end
+
+    def get_can_check_out(self, obj):
+        return obj.status == Booking.STATUS_CHECKED_IN
 
     def get_checkin_window_start(self, obj):
         w_start, _, _, _ = obj.get_checkin_window()
@@ -297,27 +309,10 @@ class TimetableEntrySerializer(serializers.ModelSerializer):
         ]
 
 class BookingCheckInSerializer(serializers.Serializer):
-    token = serializers.CharField(required=False, allow_blank=True)
-    check_in_token = serializers.CharField(required=False, allow_blank=True)
     resource_id = serializers.IntegerField(required=False, allow_null=True)
-    notes = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    force = serializers.BooleanField(required=False, default=False)
+    notes = serializers.CharField(max_length=500, required=False, allow_blank=True, default='')
 
-    def validate(self, data):
-        token_val = data.get('token') or data.get('check_in_token') or ''
-        if isinstance(token_val, str):
-            token_val = token_val.strip()
-            if token_val.startswith('{') and token_val.endswith('}'):
-                try:
-                    import json
-                    parsed = json.loads(token_val)
-                    if isinstance(parsed, dict):
-                        if 'token' in parsed:
-                            token_val = parsed['token']
-                        elif 'check_in_token' in parsed:
-                            token_val = parsed['check_in_token']
-                        if 'resource_id' in parsed and data.get('resource_id') is None:
-                            data['resource_id'] = parsed['resource_id']
-                except Exception:
-                    pass
-        data['token'] = token_val
-        return data
+class BookingCheckOutSerializer(serializers.Serializer):
+    notes = serializers.CharField(max_length=500, required=False, allow_blank=True, default='')
+

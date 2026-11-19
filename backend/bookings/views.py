@@ -76,16 +76,34 @@ class ResourceAvailabilityView(APIView):
                 if s_upper > start_dt and s_lower < end_dt:
                     is_own = request.user and request.user.is_authenticated and slot.booking.requester_id == request.user.id
                     is_timetable = slot.booking.kind == Booking.KIND_TIMETABLE
+                    is_official = slot.booking.source == Booking.SOURCE_OFFICIAL_PERMISSION
                     course_label = slot.booking.purpose.replace('Timetable Hold: ', '').replace('Timetable: ', '')
+                    
+                    if is_official:
+                        event_title = f"OFFICIAL: {slot.booking.purpose[:30]}"
+                        event_color = "#7c3aed"  # Official Purple
+                    elif is_timetable:
+                        event_title = f"Class: {course_label}"
+                        event_color = "#0284c7"
+                    elif is_own:
+                        event_title = "My Booking"
+                        event_color = "#F58220"
+                    else:
+                        event_title = "Reserved"
+                        event_color = "#444444"
+
                     events.append({
                         "id": f"booking-{slot.booking_id}",
-                        "title": f"Class: {course_label}" if is_timetable else ("My Booking" if is_own else "Reserved"),
+                        "title": event_title,
                         "start": s_lower.isoformat(),
                         "end": s_upper.isoformat(),
-                        "type": "timetable" if is_timetable else "booking",
-                        "color": "#0284c7" if is_timetable else ("#F58220" if is_own else "#444444"),
+                        "type": "official" if is_official else ("timetable" if is_timetable else "booking"),
+                        "color": event_color,
                         "status": slot.booking.status,
                         "kind": slot.booking.kind,
+                        "source": slot.booking.source,
+                        "is_official": is_official,
+                        "badge": "OFFICIAL UNIVERSITY ALLOCATION" if is_official else None,
                     })
 
         # 2. Blackout / Maintenance Periods (Resource-specific & Campus-wide)
@@ -820,14 +838,28 @@ def execute_booking_checkin(booking, user, resource_id=None, force=False):
     }, status=status.HTTP_200_OK)
 
 
-class BookingQRCodeView(APIView):
+class BookingCheckInView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, pk, *args, **kwargs):
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            booking = Booking.objects.select_related('resource', 'requester').get(pk=pk)
+        except Booking.DoesNotExist:
+            return Response({"error": "not_found", "detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        resource_id = request.data.get('resource_id')
+        force = bool(request.data.get('force', False))
+        return execute_booking_checkin(booking, request.user, resource_id=resource_id, force=force)
+
+
+class BookingCheckOutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, *args, **kwargs):
         try:
             booking = Booking.objects.select_related('resource', 'resource__custodian', 'requester').get(pk=pk)
         except Booking.DoesNotExist:
-            return Response({"detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "not_found", "detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
         is_owner = (booking.requester_id == user.id)
@@ -848,130 +880,114 @@ class BookingQRCodeView(APIView):
         )
 
         if not (is_owner or is_custodian or is_dept_head or is_staff):
-            return Response(
-                {"detail": "Permission denied to access this booking's QR code."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        # Requirement: approved bookings only
-        if booking.status not in [Booking.STATUS_APPROVED, Booking.STATUS_CONFIRMED]:
-            return Response(
-                {"detail": f"QR code is only available for approved bookings (current status: {booking.status})."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Generate PNG QR using qrcode library encoding the check-in token
-        import io
-        import qrcode
-        from django.http import HttpResponse
-
-        token_str = str(booking.checkin_token) if booking.checkin_token else ""
-        qr = qrcode.QRCode(
-            version=1,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(token_str)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-        buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
-        png_bytes = buffer.getvalue()
-
-        w_start, w_end, s_start, s_end = booking.get_checkin_window()
-        now = timezone.now()
-        can_checkin = (
-            w_start is not None
-            and w_end is not None
-            and (w_start <= now <= w_end)
-        )
-
-        import base64
-        data_payload = {
-            "booking_id": booking.id,
-            "token": token_str,
-            "checkin_token": token_str,
-            "check_in_token": token_str,
-            "resource_id": booking.resource_id,
-            "resource_name": booking.resource.name,
-            "resource_location": booking.resource.location,
-            "requester": booking.requester.username,
-            "requester_name": booking.requester.get_full_name() or booking.requester.username,
-            "status": booking.status,
-            "status_display": booking.get_status_display(),
-            "checked_in_at": booking.checked_in_at.isoformat() if booking.checked_in_at else None,
-            "start_time": s_start.isoformat() if s_start else None,
-            "end_time": s_end.isoformat() if s_end else None,
-            "checkin_window_start": w_start.isoformat() if w_start else None,
-            "checkin_window_end": w_end.isoformat() if w_end else None,
-            "can_check_in": can_checkin,
-            "qr_svg": booking.generate_qr_svg(),
-            "qr_data_url": booking.generate_qr_data_url(),
-            "qr_png_base64": f"data:image/png;base64,{base64.b64encode(png_bytes).decode('utf-8')}",
-        }
-
-        if request.query_params.get('format') == 'json':
-            return Response(data_payload, status=status.HTTP_200_OK)
-
-        response = HttpResponse(png_bytes, content_type='image/png')
-        response.data = data_payload
-        return response
-
-
-class BookingCheckInView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            booking = Booking.objects.select_related('resource', 'requester').get(pk=pk)
-        except Booking.DoesNotExist:
-            return Response({"error": "not_found", "detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        resource_id = request.data.get('resource_id')
-        force = bool(request.data.get('force', False))
-        return execute_booking_checkin(booking, request.user, resource_id=resource_id, force=force)
-
-
-class BookingTokenCheckInView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        serializer = BookingCheckInSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        token = serializer.validated_data.get('token') or request.data.get('check_in_token') or request.data.get('token')
-        if not token:
             return Response({
-                "error": "missing_token",
-                "detail": "QR check-in token is required.",
-                "message": "QR check-in token is required."
-            }, status=status.HTTP_400_BAD_REQUEST)
+                "error": "unauthorized_checkout",
+                "detail": "You do not have permission to check out this booking.",
+                "message": "You do not have permission to check out this booking."
+            }, status=status.HTTP_403_FORBIDDEN)
 
-        # Lookup booking by token (supporting raw token or UUID string)
-        import uuid
-        booking = Booking.objects.select_related('resource', 'resource__custodian', 'requester').filter(
-            checkin_token=token
-        ).first()
+        with transaction.atomic():
+            locked = Booking.objects.select_for_update().select_related('resource', 'requester').get(pk=booking.pk)
+            if locked.status == Booking.STATUS_COMPLETED:
+                checkout_time_str = locked.checked_out_at.strftime('%I:%M %p') if locked.checked_out_at else "previously"
+                return Response({
+                    "error": "already_checked_out",
+                    "detail": f"This booking has already been checked out at {checkout_time_str}.",
+                    "message": f"This booking has already been checked out at {checkout_time_str}."
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-        if not booking:
+            if locked.status != Booking.STATUS_CHECKED_IN:
+                return Response({
+                    "error": "invalid_status",
+                    "detail": f"Cannot check out: Booking must be currently checked in (current status: '{locked.get_status_display()}').",
+                    "message": f"Cannot check out: Booking must be currently checked in (current status: '{locked.get_status_display()}')."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            now = timezone.now()
+            locked.status = Booking.STATUS_COMPLETED
+            locked.checked_out_at = now
+            locked.checked_out_by = user
+            locked.save(update_fields=['status', 'checked_out_at', 'checked_out_by', 'updated_at'])
+            locked.slots.update(is_active=False)
+            booking = locked
+
+        return Response({
+            "message": f"Check-out successful for {booking.resource.name}.",
+            "detail": f"Check-out successful for {booking.resource.name}.",
+            "booking": BookingSerializer(booking).data
+        }, status=status.HTTP_200_OK)
+
+
+class CheckInDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        role = getattr(user, 'role', '')
+        is_admin_or_fm = (
+            user.is_superuser
+            or getattr(user, 'is_admin_role', False)
+            or getattr(user, 'is_facility_mgr_role', False)
+            or role in ['admin', 'facility_mgr']
+        )
+        is_custodian = (role == 'custodian' or getattr(user, 'is_custodian_role', False))
+        is_dept_head = (role == 'dept_head' or getattr(user, 'is_dept_head_role', False))
+
+        if not (is_admin_or_fm or is_custodian or is_dept_head):
+            return Response({"detail": "Access restricted to custodians, facility managers, and staff."}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = Booking.objects.select_related(
+            'resource', 'resource__resource_type', 'resource__custodian', 'requester'
+        ).prefetch_related('slots', 'consumables', 'consumables__consumable')
+
+        if is_admin_or_fm:
+            pass
+        elif is_custodian:
+            queryset = queryset.filter(resource__custodian=user)
+        elif is_dept_head and user.department:
+            queryset = queryset.filter(
+                Q(resource__department__iexact=user.department)
+                | Q(resource__custodian__department__iexact=user.department)
+            )
+
+        # Filters
+        date_param = request.query_params.get('date')
+        if date_param:
             try:
-                parsed_uuid = uuid.UUID(str(token).strip())
-                booking = Booking.objects.select_related('resource', 'resource__custodian', 'requester').filter(
-                    checkin_token=parsed_uuid
-                ).first()
+                target_date = timezone.datetime.strptime(date_param, '%Y-%m-%d').date()
+                queryset = queryset.filter(slots__period__overlap=DateTimeTZRange(
+                    timezone.make_aware(timezone.datetime.combine(target_date, timezone.datetime.min.time())),
+                    timezone.make_aware(timezone.datetime.combine(target_date, timezone.datetime.max.time()))
+                ))
             except Exception:
-                booking = None
+                pass
 
-        if not booking:
-            return Response({
-                "error": "invalid_qr",
-                "detail": "Invalid QR code or check-in token. No matching booking found.",
-                "message": "Invalid QR code or check-in token. No matching booking found."
-            }, status=status.HTTP_404_NOT_FOUND)
+        status_param = request.query_params.get('status')
+        if status_param:
+            if status_param == 'eligible':
+                queryset = queryset.filter(status__in=[Booking.STATUS_APPROVED, Booking.STATUS_CONFIRMED, Booking.STATUS_CHECKED_IN])
+            else:
+                queryset = queryset.filter(status=status_param)
 
-        resource_id = serializer.validated_data.get('resource_id')
-        force = bool(request.data.get('force', False))
-        return execute_booking_checkin(booking, request.user, resource_id=resource_id, force=force)
+        resource_param = request.query_params.get('resource_id')
+        if resource_param:
+            queryset = queryset.filter(resource_id=resource_param)
+
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(id__icontains=search)
+                | Q(resource__name__icontains=search)
+                | Q(requester__username__icontains=search)
+                | Q(requester__first_name__icontains=search)
+                | Q(requester__last_name__icontains=search)
+                | Q(purpose__icontains=search)
+            )
+
+        queryset = queryset.distinct().order_by('-created_at')[:100]
+        serializer = BookingSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 def generate_ics_calendar(bookings, calendar_name="Campus Bookings"):
     cal = Calendar()
@@ -985,7 +1001,7 @@ def generate_ics_calendar(bookings, calendar_name="Campus Bookings"):
         if not slot or not slot.period or not slot.period.lower or not slot.period.upper:
             continue
         event = Event()
-        uid = f"p20-booking-{b.id}-{b.checkin_token or b.id}@campus.edu"
+        uid = f"p20-booking-{b.id}@campus.edu"
         event.add('uid', uid)
         event.add('summary', f"{b.resource.name} - {b.purpose[:60]}")
         event.add('location', b.resource.location or 'Campus Facility')

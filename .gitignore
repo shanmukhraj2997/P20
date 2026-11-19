@@ -41,6 +41,10 @@ htmlcov/
 .nox/
 .hypothesis/
 
+# Media & Uploads
+media/
+backend/media/
+
 # Node / Next.js
 node_modules/
 .next/

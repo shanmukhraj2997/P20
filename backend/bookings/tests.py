@@ -168,8 +168,8 @@ class BookingEngineTests(TestCase):
         }, format='json')
         self.assertEqual(resp_user2.status_code, status.HTTP_201_CREATED)
 
-    def test_qr_code_generation_and_valid_checkin(self):
-        """Test valid QR generation and successful check-in within window."""
+    def test_manual_checkin_and_checkout_flow(self):
+        """Test valid manual check-in within window and subsequent check-out."""
         now = timezone.now()
         # Active slot starts in 5 minutes (within 15-minute check-in window)
         start = now + timedelta(minutes=5)
@@ -184,16 +184,7 @@ class BookingEngineTests(TestCase):
         from psycopg2.extras import DateTimeTZRange
         BookingSlot.objects.create(booking=b, resource=self.resource, period=DateTimeTZRange(start, end), is_active=True)
 
-        # 1. Fetch QR Code endpoint
-        url_qr = reverse('booking-qr', kwargs={'pk': b.pk})
-        resp_qr = self.client_user1.get(url_qr)
-        self.assertEqual(resp_qr.status_code, status.HTTP_200_OK)
-        self.assertIn("qr_svg", resp_qr.data)
-        self.assertIn("qr_data_url", resp_qr.data)
-        self.assertEqual(resp_qr.data["checkin_token"], str(b.checkin_token))
-        self.assertTrue(resp_qr.data["can_check_in"])
-
-        # 2. Check-In via booking ID endpoint
+        # 1. Manual Check-In via booking ID endpoint
         url_checkin = reverse('booking-check-in', kwargs={'pk': b.pk})
         resp_checkin = self.client_user1.post(url_checkin, {"resource_id": self.resource.id}, format='json')
         self.assertEqual(resp_checkin.status_code, status.HTTP_200_OK)
@@ -205,13 +196,19 @@ class BookingEngineTests(TestCase):
         self.assertIsNotNone(b.checked_in_at)
         self.assertEqual(b.checked_in_by, self.user1)
 
-    def test_invalid_qr_token_checkin(self):
-        """Test scanning an invalid or non-existent QR token."""
-        url = reverse('booking-token-check-in')
-        fake_token = "00000000-0000-0000-0000-000000000000"
-        resp = self.client_user1.post(url, {"token": fake_token}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(resp.data["error"], "invalid_qr")
+        # 2. Manual Check-Out via booking ID endpoint
+        url_checkout = reverse('booking-check-out', kwargs={'pk': b.pk})
+        resp_checkout = self.client_user1.post(url_checkout, format='json')
+        self.assertEqual(resp_checkout.status_code, status.HTTP_200_OK)
+        self.assertIn("Check-out successful", resp_checkout.data["message"])
+
+        # Verify database update
+        b.refresh_from_db()
+        self.assertEqual(b.status, Booking.STATUS_COMPLETED)
+        self.assertIsNotNone(b.checked_out_at)
+        self.assertEqual(b.checked_out_by, self.user1)
+        self.assertFalse(b.slots.filter(is_active=True).exists())
+
 
     def test_duplicate_checkin_prevention(self):
         """Test that already checked-in bookings cannot be checked in a second time."""
@@ -349,18 +346,13 @@ class BookingEngineTests(TestCase):
         b = Booking.objects.create(
             requester=self.user1,
             resource=self.resource,
-            purpose="JSON Scanner Test",
+            purpose="Manual Check-in Test",
             status=Booking.STATUS_APPROVED
         )
         BookingSlot.objects.create(booking=b, resource=self.resource, period=DateTimeTZRange(start, end), is_active=True)
 
-        url = reverse('booking-token-check-in')
-        payload = json.dumps({
-            "booking_id": b.id,
-            "token": str(b.checkin_token),
-            "resource_id": self.resource.id
-        })
-        resp = self.client_user1.post(url, {"token": payload}, format='json')
+        url = reverse('booking-check-in', kwargs={'pk': b.pk})
+        resp = self.client_user1.post(url, {"resource_id": self.resource.id}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         b.refresh_from_db()
         self.assertEqual(b.status, Booking.STATUS_CHECKED_IN)
@@ -421,10 +413,6 @@ class BookingEngineTests(TestCase):
             status=Booking.STATUS_APPROVED
         )
         BookingSlot.objects.create(booking=b, resource=self.resource, period=DateTimeTZRange(start, end), is_active=True)
-
-        url_qr = reverse('booking-qr', kwargs={'pk': b.pk})
-        resp_qr = client_dh.get(url_qr)
-        self.assertEqual(resp_qr.status_code, status.HTTP_200_OK)
 
         url_checkin = reverse('booking-check-in', kwargs={'pk': b.pk})
         resp_ci = client_dh.post(url_checkin, format='json')
@@ -1036,66 +1024,42 @@ class Phase2QRCheckInAndNoShowTests(TestCase):
     def auth(self, user):
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + user.auth_token.key)
 
-    def test_qr_endpoint_owner_success_returns_png(self):
+    def test_manual_checkin_owner_success(self):
         self.auth(self.owner)
-        url = reverse('booking-qr', kwargs={'pk': self.booking_current.pk})
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp['Content-Type'], 'image/png')
-        self.assertTrue(resp.content.startswith(b'\x89PNG\r\n\x1a\n'))
-
-    def test_qr_endpoint_json_format_support(self):
-        self.auth(self.owner)
-        url = reverse('booking-qr', kwargs={'pk': self.booking_current.pk}) + '?format=json'
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data["token"], str(self.booking_current.checkin_token))
-        self.assertTrue(resp.data["qr_png_base64"].startswith("data:image/png;base64,"))
-
-    def test_qr_endpoint_unauthorized_student_forbidden(self):
-        url = reverse('booking-qr', kwargs={'pk': self.booking_current.pk})
-        self.auth(self.other_student)
-        resp_student = self.client.get(url)
-        self.assertEqual(resp_student.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_qr_endpoint_non_approved_booking_rejected(self):
-        from psycopg2.extras import DateTimeTZRange
-        now = timezone.now()
-        res_pending = self.create_resource("Pending Resource")
-        b_pending = Booking.objects.create(
-            requester=self.owner,
-            resource=res_pending,
-            purpose="Pending QR Check",
-            status=Booking.STATUS_PENDING
-        )
-        BookingSlot.objects.create(
-            booking=b_pending,
-            resource=res_pending,
-            period=DateTimeTZRange(now + timedelta(days=1), now + timedelta(days=1, hours=2)),
-            is_active=True
-        )
-
-        self.auth(self.owner)
-        url_pending = reverse('booking-qr', kwargs={'pk': b_pending.pk})
-        resp = self.client.get(url_pending)
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_checkin_permissions_allowed_roles(self):
-        url = reverse('booking-token-check-in')
-        payload = {"token": str(self.booking_current.checkin_token)}
-
-        self.auth(self.owner)
-        resp = self.client.post(url, payload, format='json')
+        url = reverse('booking-check-in', kwargs={'pk': self.booking_current.pk})
+        resp = self.client.post(url, {"resource_id": self.resource.id}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.booking_current.refresh_from_db()
         self.assertEqual(self.booking_current.status, Booking.STATUS_CHECKED_IN)
         self.assertEqual(self.booking_current.checked_in_by, self.owner)
         self.assertIsNotNone(self.booking_current.checked_in_at)
 
+    def test_manual_checkout_success(self):
+        self.booking_current.status = Booking.STATUS_CHECKED_IN
+        self.booking_current.checked_in_at = timezone.now()
+        self.booking_current.checked_in_by = self.owner
+        self.booking_current.save()
+
+        self.auth(self.owner)
+        url = reverse('booking-check-out', kwargs={'pk': self.booking_current.pk})
+        resp = self.client.post(url, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.booking_current.refresh_from_db()
+        self.assertEqual(self.booking_current.status, Booking.STATUS_COMPLETED)
+        self.assertEqual(self.booking_current.checked_out_by, self.owner)
+        self.assertIsNotNone(self.booking_current.checked_out_at)
+        self.assertFalse(self.booking_current.slots.filter(is_active=True).exists())
+
+    def test_checkout_fails_if_not_checked_in(self):
+        self.auth(self.owner)
+        url = reverse('booking-check-out', kwargs={'pk': self.booking_current.pk})
+        resp = self.client.post(url, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp.data["error"], "invalid_status")
+
     def test_checkin_by_custodian_facility_mgr_and_admin(self):
         from psycopg2.extras import DateTimeTZRange
         now = timezone.now()
-        url = reverse('booking-token-check-in')
 
         # Test Custodian of that resource
         res_cust = self.create_resource("Custodian Test Room")
@@ -1112,7 +1076,8 @@ class Phase2QRCheckInAndNoShowTests(TestCase):
             is_active=True
         )
         self.auth(self.custodian)
-        resp_cust = self.client.post(url, {"token": str(b_cust.checkin_token)}, format='json')
+        url_cust = reverse('booking-check-in', kwargs={'pk': b_cust.pk})
+        resp_cust = self.client.post(url_cust, format='json')
         self.assertEqual(resp_cust.status_code, status.HTTP_200_OK)
         b_cust.refresh_from_db()
         self.assertEqual(b_cust.status, Booking.STATUS_CHECKED_IN)
@@ -1133,7 +1098,8 @@ class Phase2QRCheckInAndNoShowTests(TestCase):
             is_active=True
         )
         self.auth(self.facility_mgr)
-        resp_fm = self.client.post(url, {"token": str(b_fm.checkin_token)}, format='json')
+        url_fm = reverse('booking-check-in', kwargs={'pk': b_fm.pk})
+        resp_fm = self.client.post(url_fm, format='json')
         self.assertEqual(resp_fm.status_code, status.HTTP_200_OK)
         b_fm.refresh_from_db()
         self.assertEqual(b_fm.status, Booking.STATUS_CHECKED_IN)
@@ -1154,28 +1120,27 @@ class Phase2QRCheckInAndNoShowTests(TestCase):
             is_active=True
         )
         self.auth(self.admin)
-        resp_admin = self.client.post(url, {"token": str(b_admin.checkin_token)}, format='json')
+        url_admin = reverse('booking-check-in', kwargs={'pk': b_admin.pk})
+        resp_admin = self.client.post(url_admin, format='json')
         self.assertEqual(resp_admin.status_code, status.HTTP_200_OK)
         b_admin.refresh_from_db()
         self.assertEqual(b_admin.status, Booking.STATUS_CHECKED_IN)
         self.assertEqual(b_admin.checked_in_by, self.admin)
 
     def test_checkin_denied_for_unauthorized_users(self):
-        url = reverse('booking-token-check-in')
-        payload = {"token": str(self.booking_current.checkin_token)}
+        url = reverse('booking-check-in', kwargs={'pk': self.booking_current.pk})
 
         self.auth(self.other_student)
-        resp_student = self.client.post(url, payload, format='json')
+        resp_student = self.client.post(url, format='json')
         self.assertEqual(resp_student.status_code, status.HTTP_403_FORBIDDEN)
 
         self.auth(self.other_custodian)
-        resp_other_cust = self.client.post(url, payload, format='json')
+        resp_other_cust = self.client.post(url, format='json')
         self.assertEqual(resp_other_cust.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_checkin_window_validations(self):
         from psycopg2.extras import DateTimeTZRange
         now = timezone.now()
-        url = reverse('booking-token-check-in')
         self.auth(self.owner)
 
         # 1. Too early (booking starts in 30 minutes, window opens at 15 minutes)
@@ -1192,7 +1157,8 @@ class Phase2QRCheckInAndNoShowTests(TestCase):
             period=DateTimeTZRange(now + timedelta(minutes=30), now + timedelta(minutes=90)),
             is_active=True
         )
-        resp_early = self.client.post(url, {"token": str(b_early.checkin_token)}, format='json')
+        url_early = reverse('booking-check-in', kwargs={'pk': b_early.pk})
+        resp_early = self.client.post(url_early, format='json')
         self.assertEqual(resp_early.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(resp_early.data["error"], "checkin_too_early")
 
@@ -1210,7 +1176,8 @@ class Phase2QRCheckInAndNoShowTests(TestCase):
             period=DateTimeTZRange(now - timedelta(minutes=45), now + timedelta(minutes=60)),
             is_active=True
         )
-        resp_late = self.client.post(url, {"token": str(b_late.checkin_token)}, format='json')
+        url_late = reverse('booking-check-in', kwargs={'pk': b_late.pk})
+        resp_late = self.client.post(url_late, format='json')
         self.assertEqual(resp_late.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(resp_late.data["error"], "checkin_window_closed")
 
@@ -1228,36 +1195,30 @@ class Phase2QRCheckInAndNoShowTests(TestCase):
             period=DateTimeTZRange(now - timedelta(hours=2), now - timedelta(hours=1)),
             is_active=True
         )
-        resp_expired = self.client.post(url, {"token": str(b_expired.checkin_token)}, format='json')
+        url_expired = reverse('booking-check-in', kwargs={'pk': b_expired.pk})
+        resp_expired = self.client.post(url_expired, format='json')
         self.assertEqual(resp_expired.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_token_misuse_and_status_checks(self):
-        import uuid
-        url = reverse('booking-token-check-in')
+    def test_status_checks_and_duplicate_prevention(self):
+        url = reverse('booking-check-in', kwargs={'pk': self.booking_current.pk})
         self.auth(self.owner)
-
-        fake_token = str(uuid.uuid4())
-        resp_fake = self.client.post(url, {"token": fake_token}, format='json')
-        self.assertEqual(resp_fake.status_code, status.HTTP_404_NOT_FOUND)
-
-        resp_missing = self.client.post(url, {}, format='json')
-        self.assertEqual(resp_missing.status_code, status.HTTP_400_BAD_REQUEST)
 
         # Double check-in rejection
         self.booking_current.status = Booking.STATUS_CHECKED_IN
         self.booking_current.checked_in_at = timezone.now()
         self.booking_current.save()
 
-        resp_dup = self.client.post(url, {"token": str(self.booking_current.checkin_token)}, format='json')
+        resp_dup = self.client.post(url, format='json')
         self.assertEqual(resp_dup.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(resp_dup.data["error"], "already_checked_in")
 
         # Cancelled booking rejection
         self.booking_current.status = Booking.STATUS_CANCELLED
         self.booking_current.save()
-        resp_cancelled = self.client.post(url, {"token": str(self.booking_current.checkin_token)}, format='json')
+        resp_cancelled = self.client.post(url, format='json')
         self.assertEqual(resp_cancelled.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(resp_cancelled.data["error"], "booking_cancelled")
+
 
     def test_celery_release_no_shows_task_releases_slot_and_allows_rebooking(self):
         from psycopg2.extras import DateTimeTZRange

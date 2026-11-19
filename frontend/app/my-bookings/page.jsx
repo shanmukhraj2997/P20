@@ -10,8 +10,6 @@ import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import ConfirmModal from '@/components/ConfirmModal';
-import QrCheckInModal from '@/components/QrCheckInModal';
-import QrScanModal from '@/components/QrScanModal';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 
@@ -27,10 +25,7 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionMsg, setActionMsg] = useState(null);
-
-  // QR Modal States
-  const [qrModalBooking, setQrModalBooking] = useState(null);
-  const [showScanModal, setShowScanModal] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   // Cancellation Modal State
   const [cancellingBooking, setCancellingBooking] = useState(null);
@@ -87,6 +82,34 @@ export default function MyBookingsPage() {
       alert(err.message || 'Failed to cancel booking.');
     } finally {
       setCancellingLoading(false);
+    }
+  };
+
+  const handleCheckIn = async (b) => {
+    setActionLoadingId(b.id);
+    try {
+      const resp = await api.bookings.checkIn(b.id);
+      setActionMsg(resp.message || `Booking #${b.id} checked in successfully!`);
+      fetchBookings();
+      setTimeout(() => setActionMsg(null), 3500);
+    } catch (err) {
+      alert(err.message || 'Check-in failed');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleCheckOut = async (b) => {
+    setActionLoadingId(b.id);
+    try {
+      const resp = await api.bookings.checkOut(b.id);
+      setActionMsg(resp.message || `Booking #${b.id} checked out successfully!`);
+      fetchBookings();
+      setTimeout(() => setActionMsg(null), 3500);
+    } catch (err) {
+      alert(err.message || 'Check-out failed');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -298,11 +321,16 @@ export default function MyBookingsPage() {
                     }`}
                   >
                     <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-wrap items-center space-x-2 gap-y-1">
                         <span className="text-xs font-bold text-[#F58220] bg-[#FFF3E6] px-2.5 py-0.5 rounded-md border border-[#F58220]/30">
                           Booking #{b.id}
                         </span>
                         <StatusBadge status={b.status} display={b.status_display} />
+                        {b.source === 'official_permission' && (
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-300">
+                            OFFICIAL UNIVERSITY ALLOCATION
+                          </span>
+                        )}
                         {b.series && (
                           <span className="text-[10px] font-bold text-[#111111] bg-[#F5F5F5] px-2 py-0.5 rounded-md border border-[#E5E5E5]">
                             Series #{b.series}
@@ -349,21 +377,27 @@ export default function MyBookingsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                      {/* QR Check-In Action Button (Approved Bookings Only) */}
-                      {['approved', 'checked_in'].includes(b.status) && (
+                      {/* Check-In Action Button */}
+                      {['approved', 'confirmed'].includes(b.status) && (
                         <button
-                          onClick={() => setQrModalBooking(b)}
-                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 border shadow-2xs cursor-pointer ${
-                            b.status === 'checked_in'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                              : 'bg-[#FFF3E6] text-[#D96A0B] border-[#F58220]/40 hover:bg-[#F58220] hover:text-white'
-                          }`}
-                          id={`qr-checkin-${b.id}`}
+                          onClick={() => handleCheckIn(b)}
+                          disabled={actionLoadingId === b.id}
+                          className="px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 border shadow-2xs bg-[#FFF3E6] text-[#D96A0B] border-[#F58220]/40 hover:bg-[#F58220] hover:text-white cursor-pointer"
+                          id={`checkin-${b.id}`}
                         >
-                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                          </svg>
-                          <span>{b.status === 'checked_in' ? 'Pass Checked-In' : 'Access QR & Check-In'}</span>
+                          <span>{actionLoadingId === b.id ? 'Checking In...' : 'Check In'}</span>
+                        </button>
+                      )}
+
+                      {/* Check-Out Action Button */}
+                      {b.status === 'checked_in' && (
+                        <button
+                          onClick={() => handleCheckOut(b)}
+                          disabled={actionLoadingId === b.id}
+                          className="px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 border shadow-2xs bg-indigo-50 text-indigo-700 border-indigo-300 hover:bg-indigo-600 hover:text-white cursor-pointer"
+                          id={`checkout-${b.id}`}
+                        >
+                          <span>{actionLoadingId === b.id ? 'Checking Out...' : 'Check Out'}</span>
                         </button>
                       )}
 
@@ -403,30 +437,6 @@ export default function MyBookingsPage() {
               })}
             </div>
           )}
-
-          {/* QR Check-In Modal */}
-          <QrCheckInModal
-            isOpen={Boolean(qrModalBooking)}
-            booking={qrModalBooking}
-            isStaff={isStaffRole}
-            onClose={() => setQrModalBooking(null)}
-            onCheckedIn={(updated) => {
-              setActionMsg(`Booking #${updated.id} checked in successfully!`);
-              fetchBookings();
-              setTimeout(() => setActionMsg(null), 3500);
-            }}
-          />
-
-          {/* Staff Kiosk / Scanner Modal */}
-          <QrScanModal
-            isOpen={showScanModal}
-            onClose={() => setShowScanModal(false)}
-            onCheckedIn={(updated) => {
-              setActionMsg(`Check-in verified for Booking #${updated.id}!`);
-              fetchBookings();
-              setTimeout(() => setActionMsg(null), 3500);
-            }}
-          />
 
           {/* Cancellation Confirmation Modal */}
           <ConfirmModal

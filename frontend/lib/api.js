@@ -12,8 +12,9 @@ export async function apiRequest(endpoint, options = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('p20_auth_token') : null;
   const baseUrl = getApiBaseUrl();
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { 'Authorization': `Token ${token}` } : {}),
     ...options.headers,
   };
@@ -101,12 +102,41 @@ export const api = {
     },
     approve: (id, note = '') => apiRequest(`/bookings/${id}/approve/`, { method: 'POST', body: JSON.stringify({ decision_note: note }) }),
     reject: (id, note) => apiRequest(`/bookings/${id}/reject/`, { method: 'POST', body: JSON.stringify({ decision_note: note }) }),
-    getQr: (id) => apiRequest(`/bookings/${id}/qr/?format=json`),
-    getQrRawUrl: (id) => `${getApiBaseUrl()}/bookings/${id}/qr/`,
     checkIn: (id, payload = {}) => apiRequest(`/bookings/${id}/check-in/`, { method: 'POST', body: JSON.stringify(payload) }),
-    checkInWithToken: (payload) => apiRequest('/bookings/check-in/', { method: 'POST', body: JSON.stringify(payload) }),
+    checkOut: (id, payload = {}) => apiRequest(`/bookings/${id}/check-out/`, { method: 'POST', body: JSON.stringify(payload) }),
+    checkInDashboard: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return apiRequest(`/bookings/check-in-dashboard/${qs ? `?${qs}` : ''}`);
+    },
     exportAllIcsUrl: () => `${getApiBaseUrl()}/bookings/export.ics`,
     exportBookingIcsUrl: (id) => `${getApiBaseUrl()}/bookings/${id}/export.ics`,
+  },
+
+  // Official University Permission Slip System
+  permissionSlips: {
+    list: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return apiRequest(`/permission-slips/${qs ? `?${qs}` : ''}`);
+    },
+    get: (id) => apiRequest(`/permission-slips/${id}/`),
+    create: (formData) => apiRequest('/permission-slips/', {
+      method: 'POST',
+      body: formData,
+    }),
+    review: (id) => apiRequest(`/permission-slips/${id}/review/`, { method: 'POST' }),
+    verify: (id, notes = '') => apiRequest(`/permission-slips/${id}/verify/`, {
+      method: 'POST',
+      body: JSON.stringify({ verification_notes: notes }),
+    }),
+    reject: (id, reason) => apiRequest(`/permission-slips/${id}/reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ rejection_reason: reason }),
+    }),
+    conflicts: (id) => apiRequest(`/permission-slips/${id}/conflicts/`),
+    allocate: (id, { override = false, override_reason = '' } = {}) => apiRequest(`/permission-slips/${id}/allocate/`, {
+      method: 'POST',
+      body: JSON.stringify({ override, override_reason }),
+    }),
   },
 
   // Timetable Integration (M6)

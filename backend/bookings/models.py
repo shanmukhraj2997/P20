@@ -106,6 +106,13 @@ class Booking(models.Model):
         (KIND_TIMETABLE, 'Timetable Hold'),
     ]
 
+    SOURCE_WEBSITE = 'website_booking'
+    SOURCE_OFFICIAL_PERMISSION = 'official_permission'
+    SOURCE_CHOICES = [
+        (SOURCE_WEBSITE, 'Website Booking'),
+        (SOURCE_OFFICIAL_PERMISSION, 'Official University Permission'),
+    ]
+
     STATUS_PENDING = 'pending'
     STATUS_APPROVED = 'approved'
     STATUS_CONFIRMED = 'confirmed'
@@ -148,6 +155,12 @@ class Booking(models.Model):
         default=KIND_STANDARD,
         help_text="Booking classification: standard user booking or timetable hold."
     )
+    source = models.CharField(
+        max_length=30,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_WEBSITE,
+        help_text="Booking origin: website booking or official university permission."
+    )
 
     requester = models.ForeignKey(
         User,
@@ -168,13 +181,6 @@ class Booking(models.Model):
         default=STATUS_APPROVED,
         help_text="Booking status."
     )
-    checkin_token = models.UUIDField(
-        default=uuid.uuid4,
-        editable=False,
-        unique=True,
-        null=True,
-        help_text="Unique cryptographic token encoded inside QR code for secure verification."
-    )
     checked_in_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -187,6 +193,19 @@ class Booking(models.Model):
         blank=True,
         related_name='checkins_performed',
         help_text="User who authorized or performed check-in (self or desk staff)."
+    )
+    checked_out_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when check-out was completed."
+    )
+    checked_out_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='checkouts_performed',
+        help_text="Staff member who authorized or performed check-out."
     )
     no_show_at = models.DateTimeField(
         null=True,
@@ -227,21 +246,8 @@ class Booking(models.Model):
         verbose_name = 'Booking'
         verbose_name_plural = 'Bookings'
 
-    def save(self, *args, **kwargs):
-        if not self.checkin_token:
-            self.checkin_token = uuid.uuid4()
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"Booking #{self.id} - {self.resource.name} by {self.requester.username} [{self.get_status_display()}]"
-
-    @property
-    def check_in_token(self):
-        return self.checkin_token
-
-    @check_in_token.setter
-    def check_in_token(self, value):
-        self.checkin_token = value
 
     def get_primary_slot(self):
         slots = getattr(self, '_prefetched_objects_cache', {}).get('slots')
@@ -266,31 +272,6 @@ class Booking(models.Model):
         window_start = slot_start - timezone.timedelta(minutes=15)
         window_end = min(slot_start + timezone.timedelta(minutes=grace_minutes), slot_end)
         return window_start, window_end, slot_start, slot_end
-
-    def generate_qr_svg(self):
-        """
-        Generates clean SVG markup encoding the check-in verification payload.
-        """
-        import qrcode
-        import qrcode.image.svg
-
-        payload = json.dumps({
-            "booking_id": self.id,
-            "token": str(self.checkin_token),
-            "resource_id": self.resource_id,
-            "resource_name": self.resource.name,
-            "requester": self.requester.username,
-        })
-        factory = qrcode.image.svg.SvgImage
-        qr_img = qrcode.make(payload, image_factory=factory, box_size=10, border=2)
-        return qr_img.to_string(encoding='unicode')
-
-    def generate_qr_data_url(self):
-        """
-        Returns data:image/svg+xml;utf8,... URL for direct frontend image rendering.
-        """
-        svg_str = self.generate_qr_svg()
-        return f"data:image/svg+xml;utf8,{urllib.parse.quote(svg_str)}"
 
     def mark_as_no_show(self):
         """
